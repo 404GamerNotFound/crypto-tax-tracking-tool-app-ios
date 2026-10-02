@@ -8,17 +8,25 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var store = AppStore()
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            if store.isConnected {
+                TabView {
+                    NavigationStack { DashboardView() }.tabItem { Label("Überblick", systemImage: "square.grid.2x2") }
+                    NavigationStack { WalletsView() }.tabItem { Label("Quellen", systemImage: "wallet.bifold") }
+                    NavigationStack { JournalView() }.tabItem { Label("Buchungen", systemImage: "list.bullet.rectangle") }
+                    NavigationStack { TaxView() }.tabItem { Label("Steuer", systemImage: "chart.bar.doc.horizontal") }
+                    NavigationStack { MoreView() }.tabItem { Label("Mehr", systemImage: "ellipsis.circle") }
+                }
+                .id(store.sessionID)
+            } else { ConnectionView() }
         }
-        .padding()
+        .environmentObject(store)
+        .tint(Theme.green)
+        .environment(\.locale, Locale(identifier: "de_DE"))
+        .alert("CryptoBuch", isPresented: Binding(get: { store.banner != nil }, set: { if !$0 { store.banner = nil } })) {
+            Button("OK", role: .cancel) { store.banner = nil }
+        } message: { Text(store.banner ?? "") }
     }
-}
-
-#Preview {
-    ContentView()
 }
