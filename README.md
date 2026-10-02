@@ -1,2 +1,70 @@
-# crypto-tax-tracking-tool-app
+# CryptoBuch für iOS
 
+Native SwiftUI-App für das bestehende CryptoBuch-Tool. Die App verwendet ausschließlich dessen HTTP-API; Portfolio-, Import-, Kurs- und Steuerlogik bleiben auf dem Server. Es gibt weder WebView noch ein zusätzliches Web-Frontend.
+
+## Starten
+
+1. `crypto-tax-tracking-tool-app-ios/crypto-tax-tracking-tool-app-ios.xcodeproj` in Xcode öffnen. Das vorhandene Projektformat stammt aus Xcode 27; die App unterstützt iOS/iPadOS 17 oder neuer.
+2. Einen iPhone- oder iPad-Simulator auswählen und mit **Run** starten. Für ein echtes Gerät bei Bedarf das eigene Signing-Team auswählen. Bundle-ID und vorhandenes Team wurden übernommen.
+3. Auf der ersten Seite **IP-Adresse bzw. Hostname** und **Port** des bestehenden Servers eingeben, z. B. `192.168.178.20` und `3000`. HTTPS aktivieren, wenn der Server TLS verwendet.
+4. **Verbinden** prüft zuerst `/api/v1` und `/api/v1/metadata`. Erst danach erscheint die App mit den Inhalten dieses Servers.
+
+Der Server muss separat laufen und vom Gerät erreichbar sein. Auf dem echten iPhone meint `localhost` das iPhone selbst; verwende dort die LAN-Adresse des Rechners/NAS. Im iOS-Simulator kann ein auf dem Mac laufender Server unter `127.0.0.1` erreicht werden. Den lokalen Netzwerkzugriff unter iOS erlauben. IP und Port lassen sich unter **Mehr** ändern. Die letzte Adresse wird vorbelegt; eine Verbindung wird ausdrücklich über den Startbildschirm aufgebaut.
+
+Der separat auswählbare Demomodus enthält klar gekennzeichnete, fiktive Daten. Er führt keine API-Schreibaktionen aus und wird niemals als Ersatz für einen fehlgeschlagenen Serverabruf angezeigt.
+
+## Funktionen und API-Zuordnung
+
+| Native Ansicht / Aktion | Bestehende API |
+| --- | --- |
+| Verbindungsprüfung, unterstützte Zwecke | `GET /api/v1`, `GET /api/v1/metadata` |
+| Portfolio, Bestände, Buchwertverlauf | `GET /api/portfolio` |
+| Datenqualität | `GET /api/data-quality` |
+| Wallets und Börsenkonten | `GET /api/v1/wallets`, `GET /api/v1/exchange-connections` |
+| Buchungsjournal, Serverfilter, weitere Seiten | `GET /api/v1/transactions` und `links.next` |
+| Buchung, zugehörige Wallet, Belegmetadaten, Kurs-Audit | `GET /api/v1/{transactions,wallets}/{id}`, `GET /api/v1/documents`, `GET /api/v1/price-audit` |
+| Manuellen Zweck speichern | `PATCH /api/transactions/{id}` |
+| Wallet-/Börsensynchronisierung einplanen | `POST /api/jobs/sync`, `POST /api/exchange-connections/{id}/sync` |
+| Jobstatus | `GET /api/v1/jobs` |
+| Hinweise lesen und als gelesen markieren | `GET /api/v1/notifications`, `PATCH /api/notifications/read` |
+| Jahresauswertung gemäß Serverprofil | `GET /api/tax-report?year=…` |
+
+Das Journal lädt 50 Einträge je Seite in der von der API gelieferten ID-Reihenfolge. Die Anzeige nennt die geladene und gesamte Anzahl. Richtung und Zweck werden serverseitig gefiltert, die Textsuche durchsucht ausdrücklich nur geladene Einträge. Andere Listen folgen der API-Paginierung vollständig (bis maximal 200 Seiten). Bei aktiven Jobs erfolgt im geöffneten Vordergrund alle fünf Sekunden eine Statusabfrage. Auf den Übersichten aktualisiert Ziehen nach unten die Daten.
+
+## Architektur und Datenschutz
+
+- `Core/APIClient.swift`: typisierter, asynchroner URLSession-Client, Versionsprüfung, JSON-Fehler, Paginierung und URL-Validierung. Keine Abhängigkeiten von Drittanbietern.
+- `Core/Models.swift`: API-Modelle mit `Decimal` für Beträge. Fehlende Preise bleiben `nil`; EUR-Werte werden nicht als null Euro erfunden.
+- `AppStore.swift`: Verbindung und Sitzungswechsel. Nur die Serveradresse wird in `UserDefaults` gespeichert. `URLSessionConfiguration.ephemeral`, kein URL-Cache, keine Cookies und keine gespeicherten HTTP-Zugangsdaten.
+- `Views/`: native SwiftUI-Ansichten; der Buchwertverlauf nutzt Swift Charts. Oberflächensprache Deutsch, iPhone/iPad, Systemfarben für Hell-/Dunkelmodus.
+- `Config/Info.plist`: lokaler Netzwerkzugriff und auf private/Loopback-IP-Bereiche beschränkte HTTP-Ausnahmen. Öffentliche Server benötigen HTTPS. Zertifikatsprüfungen werden nicht umgangen, Weiterleitungen abgelehnt. Hintergrund: [Apples Dokumentation zu lokalem Netzwerkzugriff und ATS](https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking).
+
+Es werden keine Seeds, Private Keys, Signaturen oder Transaktionsentwürfe abgefragt. Börsen-Zugangsdaten bleiben serverseitig. Serverantworten werden nicht protokolliert. Der Server besitzt keine eingebaute Anmeldung: für entfernten Zugriff ein vertrauenswürdiges privates Netz/VPN oder einen geeignet geschützten Zugang verwenden. Die App implementiert aktuell keine Anmeldung an einem vorgeschalteten Authentifizierungsproxy.
+
+## Grenzen dieser Version
+
+Wallets/Börsenkonten anlegen, CSV-Import, Ledger, Belegdateien, manuelle Kurskorrekturen, Backups und Steuerprofile bleiben im bestehenden Web-Tool. Die App zeigt Belegmetadaten und Kurskorrekturen an, lädt aber keine Belegdateien herunter. Es gibt keine Push-Benachrichtigungen, keinen Offline-Datenspeicher und keine eigene Blockchain-Abfrage.
+
+Steuerwerte und historische Bewertungen bleiben **unverbindliche Schätzungen und Organisationshilfe, keine Steuerberatung**. Unvollständige Datensätze werden sichtbar ausgewiesen. Alle fachlichen Berechnungen und ihre Einschränkungen werden unverändert vom bestehenden Server übernommen. Es sind keine Datenmigrationen am Backend erforderlich.
+
+## Prüfen
+
+```sh
+swift test
+git diff --check
+xcodebuild \
+  -project crypto-tax-tracking-tool-app-ios/crypto-tax-tracking-tool-app-ios.xcodeproj \
+  -scheme crypto-tax-tracking-tool-app-ios \
+  -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath /tmp/cryptobuch-ios-derived \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+Die Core-Tests prüfen IP/Port, IPv6, HTTPS, ungültige Zugangsdaten-URLs, fremde API-Links, Paginierung, Endlosschleifen, Dezimalwerte, fehlende Kurse und API-Fehler. Für einen zusätzlichen lesenden Vertragstest gegen eine **separate Testinstanz**:
+
+```sh
+CRYPTOBUCH_TEST_SERVER=http://127.0.0.1:3085 swift test --filter ServerIntegrationTests
+```
+
+Ohne diese Umgebungsvariable wird der Integrationstest übersprungen. Die Unit-Tests rufen keine externen Dienste auf. Ein signierter Geräte-Build und eine App-Store-Veröffentlichung sind separate Schritte.
