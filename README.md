@@ -11,7 +11,13 @@ Native SwiftUI-App für das bestehende CryptoBuch-Tool. Die App verwendet aussch
 
 Der Server muss separat laufen und vom Gerät erreichbar sein. Auf dem echten iPhone meint `localhost` das iPhone selbst; verwende dort die LAN-Adresse des Rechners/NAS. Im iOS-Simulator kann ein auf dem Mac laufender Server unter `127.0.0.1` erreicht werden. Den lokalen Netzwerkzugriff unter iOS erlauben. IP und Port lassen sich unter **Mehr** ändern. Die letzte Adresse wird vorbelegt; eine Verbindung wird ausdrücklich über den Startbildschirm aufgebaut.
 
-Der separat auswählbare Demomodus enthält klar gekennzeichnete, fiktive Daten. Er führt keine API-Schreibaktionen aus und wird niemals als Ersatz für einen fehlgeschlagenen Serverabruf angezeigt.
+Der separat auswählbare Demomodus enthält klar gekennzeichnete, fiktive Daten. Zweckänderungen, gelesene Hinweise und simulierte Jobs bleiben nur innerhalb seiner Sitzung. Bewertungs- und Steuerbeispiele sind feste Szenarien. Er führt keine API-Schreibaktionen aus und wird niemals als Ersatz für einen fehlgeschlagenen Serverabruf angezeigt.
+
+## App-Store-Vorbereitung
+
+Datenschutz und Hilfe sind bereits vor der Serververbindung sowie unter **Mehr** erreichbar. **Lokale Verbindungsdaten löschen** entfernt die gespeicherte Adresse und beendet die Sitzung; Serverdaten werden dabei nicht gelöscht. Die native App enthält ein Privacy-Manifest, eine Erklärung der OS-eigenen HTTPS-Verschlüsselung und eine Abdeckung der verbundenen Ansicht im Hintergrund.
+
+Vor einer Einreichung müssen reale Herausgeber-/Kontaktangaben sowie öffentliche HTTPS-Adressen in `crypto-tax-tracking-tool-app-ios/crypto-tax-tracking-tool-app-ios/Publication.plist` ergänzt werden. Fehlende Angaben verhindern ein Release-Archiv, aber keinen normalen Entwicklungs-Build. Die Seiten wurden nicht veröffentlicht. Siehe [Recherche und offene Einreichungsschritte](Docs/APP_STORE_REVIEW.md), [Review-Anleitung](Docs/REVIEW_NOTES.md) und [Metadatenentwurf](Docs/STORE_METADATA.json).
 
 ## Funktionen und API-Zuordnung
 

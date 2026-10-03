@@ -50,6 +50,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6B62DA88307027B9004A922C /* Build configuration list for PBXNativeTarget "crypto-tax-tracking-tool-app-ios" */;
 			buildPhases = (
+				CB0000000000000000000001 /* Validate App Store metadata */,
 				6B62DA79307027B6004A922C /* Sources */,
 				6B62DA7A307027B6004A922C /* Frameworks */,
 				6B62DA7B307027B6004A922C /* Resources */,
@@ -106,6 +107,26 @@
 			);
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+        CB0000000000000000000001 /* Validate App Store metadata */ = {
+            isa = PBXShellScriptBuildPhase;
+            alwaysOutOfDate = 1;
+            buildActionMask = 2147483647;
+            files = ();
+            inputPaths = (
+                "$(SRCROOT)/../Tools/validate_submission.py",
+                "$(SRCROOT)/../Config/Info.plist",
+                "$(SRCROOT)/crypto-tax-tracking-tool-app-ios/Publication.plist",
+                "$(SRCROOT)/crypto-tax-tracking-tool-app-ios/PrivacyInfo.xcprivacy",
+            );
+            name = "Validate App Store metadata";
+            outputPaths = ();
+            runOnlyForDeploymentPostprocessing = 0;
+            shellPath = /bin/sh;
+            shellScript = "if [ \"$ACTION\" = \"install\" ] && [ \"$CONFIGURATION\" = \"Release\" ]; then\n  /usr/bin/python3 \"$SRCROOT/../Tools/validate_submission.py\"\nfi\n";
+        };
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		6B62DA79307027B6004A922C /* Sources */ = {

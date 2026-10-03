@@ -125,6 +125,8 @@ actor APIClient {
         return decoder
     }
 
+    func close() { session.invalidateAndCancel() }
+
     func get<T: Decodable & Sendable>(_ path: String, query: [URLQueryItem] = []) async throws -> T {
         try await request(path, query: query, method: "GET")
     }

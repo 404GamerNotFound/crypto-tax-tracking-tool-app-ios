@@ -14,6 +14,7 @@ struct TaxView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 DemoFlag()
+                if store.isDemo { Hint(text: "Feste Beispielauswertung. Zweckänderungen in der Demo berechnen diesen Bericht nicht neu; im Serverbetrieb erfolgt die Berechnung durch die bestehende API.") }
                 HStack {
                     Text("Jahresübersicht").font(.headline)
                     Spacer()

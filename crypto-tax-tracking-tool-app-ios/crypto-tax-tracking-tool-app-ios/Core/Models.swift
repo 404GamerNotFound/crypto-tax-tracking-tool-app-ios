@@ -53,8 +53,8 @@ struct Transaction: Decodable, Identifiable, Sendable {
     let priceTransactionEur: Decimal?
     let priceSource: String?
     let priceProvider: String?
-    let purpose: String?
-    let purposeOrigin: String?
+    var purpose: String?
+    var purposeOrigin: String?
     var symbol: String { assetSymbol ?? asset }
     var historicValue: Decimal? { priceTransactionEur.map { $0 * amount } }
     var directionName: String { direction == "in" ? "Eingang" : direction == "out" ? "Ausgang" : "Intern" }
@@ -133,7 +133,7 @@ struct Notice: Decodable, Identifiable, Sendable {
     let level: String
     let title: String
     let message: String?
-    let isRead: Int
+    var isRead: Int
     let createdAt: String
 }
 

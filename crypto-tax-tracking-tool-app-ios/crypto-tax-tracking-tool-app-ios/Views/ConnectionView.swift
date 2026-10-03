@@ -38,6 +38,9 @@ struct ConnectionView: View {
                             .accessibilityLabel("Port").accessibilityIdentifier("serverPort")
                     }
                     Toggle("HTTPS verwenden", isOn: $secure)
+                    if !secure {
+                        Hint(text: "HTTP überträgt deine Daten unverschlüsselt. Nur in einem vertrauenswürdigen privaten Netz verwenden; HTTPS ist empfohlen.", icon: "lock.open")
+                    }
                     if let error = store.connectionError {
                         Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red)
                     }
@@ -57,9 +60,18 @@ struct ConnectionView: View {
                         .font(.subheadline.weight(.semibold)).padding(.horizontal, 4)
                 }.disabled(store.connecting).accessibilityIdentifier("openDemo")
                 Hint(text: "Die App fragt keine Wallet-Schlüssel ab. Zugangsdaten für Börsen bleiben auf deinem Server.", icon: "lock.shield")
+                Hint(text: "Mit Verbinden erlaubst du dieser App, die Daten von deinem eingegebenen Server abzurufen. Aktionen wie Zweckänderungen werden an diesen Server gesendet.")
+                HStack {
+                    NavigationLink("Datenschutz") { PrivacyView() }
+                    Spacer()
+                    NavigationLink("Hilfe & Support") { SupportView() }
+                }.font(.subheadline).padding(.vertical, 8)
+                if !store.serverText.isEmpty { ForgetConnectionButton() }
                 Hint(text: "Der Server besitzt keine eigene Anmeldung. Nutze im Internet einen geschützten HTTPS-Zugang. Die App unterstützt derzeit keine Anmeldung an einem vorgeschalteten Proxy.")
             }.padding(24).frame(maxWidth: 570).frame(maxWidth: .infinity)
-        }.background(Theme.canvas).onAppear {
+        }.background(Theme.canvas).scrollDismissesKeyboard(.interactively)
+        .onChange(of: store.serverText) { _, value in if value.isEmpty { host = ""; port = "3000" } }
+        .onAppear {
             if let parts = URLComponents(string: store.serverText), let savedHost = parts.host {
                 host = savedHost
                 secure = parts.scheme == "https"

@@ -1,0 +1,11 @@
+{
+  "locale": "de-DE",
+  "name": "CryptoBuch",
+  "subtitle": "Portfolio und Buchungsjournal",
+  "description": "CryptoBuch für iOS verbindet dein iPhone oder iPad mit deinem selbst betriebenen CryptoBuch-Server. Gib IP-Adresse oder Hostname und Port ein und prüfe Portfolio, öffentliche Wallet-Quellen, Buchungen und Datenqualität in einer nativen App. Ordne Buchungszwecke zu, plane Synchronisierungen ein und verfolge deren Status. Die Steuerübersicht zeigt die unverbindlichen Schätzungen deines Serverprofils. Ein gekennzeichneter Demomodus ermöglicht einen ersten Einblick ohne Server. Voraussetzung für eigene Daten: ein erreichbarer CryptoBuch-Server mit API-Version 1. Wallet-Einrichtung, Imports und weitere Verwaltungsfunktionen erfolgen im bestehenden Servertool. CryptoBuch ist eine Organisationshilfe, keine Anlage- oder Steuerberatung. Die App verwahrt keine Kryptowährungen und führt keine Handels- oder Blockchain-Transaktionen aus.",
+  "keywords": "Portfolio,Journal,Buchungen,Blockchain,Datenqualität,Wallet,Organisation",
+  "suggestedPrimaryCategory": "Finance",
+  "privacyPolicyURL": "",
+  "supportURL": "",
+  "copyright": ""
+}

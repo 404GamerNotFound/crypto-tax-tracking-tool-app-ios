@@ -4,6 +4,8 @@
 <dict>
     <key>CFBundleDisplayName</key><string>CryptoBuch</string>
     <key>CFBundleDevelopmentRegion</key><string>de</string>
+    <!-- URLSession uses only the encryption supplied by Apple's operating system. -->
+    <key>ITSAppUsesNonExemptEncryption</key><false/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>CryptoBuch verbindet sich mit deinem selbst betriebenen Server im lokalen Netzwerk, um Portfolio und Buchungen abzurufen.</string>
     <key>NSAppTransportSecurity</key>

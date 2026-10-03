@@ -16,6 +16,11 @@ struct MoreView: View {
                     LabeledContent("API-Version", value: store.metadata?.apiVersion ?? "Unbekannt")
                 }
                 Button("IP-Adresse / Port ändern") { store.disconnect() }
+                ForgetConnectionButton()
+            }
+            Section("Hilfe & Datenschutz") {
+                NavigationLink { PrivacyView() } label: { Label("Datenschutz", systemImage: "hand.raised") }
+                NavigationLink { SupportView() } label: { Label("Hilfe & Support", systemImage: "questionmark.circle") }
             }
             Section("CryptoBuch für iOS") {
                 Label("Native App · Version 1.0", systemImage: "book.closed")
@@ -72,13 +77,14 @@ struct JobsView: View {
             }.refreshable { await load() }
     }
     private func title(_ value: String) -> String {
-        ["wallet-sync": "Wallet-Synchronisierung", "wallet_sync": "Wallet-Synchronisierung", "exchange-sync": "Börsen-Synchronisierung", "exchange_sync": "Börsen-Synchronisierung", "price-backfill": "Historische Kurse", "historical-price-backfill": "Historische Kurse"][value] ?? value
+        if value == "demo-sync" { return "Demo-Synchronisierung" }
+        return ["wallet-sync": "Wallet-Synchronisierung", "wallet_sync": "Wallet-Synchronisierung", "exchange-sync": "Börsen-Synchronisierung", "exchange_sync": "Börsen-Synchronisierung", "price-backfill": "Historische Kurse", "historical-price-backfill": "Historische Kurse"][value] ?? value
     }
     private func load() async {
         guard !loading else { return }
         loading = true; error = nil
         defer { loading = false }
-        if store.isDemo { jobs = Demo.jobs; loaded = true; return }
+        if store.isDemo { jobs = store.demoJobs; loaded = true; return }
         guard let client = store.client else { return }
         do { jobs = try await client.all("/api/v1/jobs"); loaded = true }
         catch is CancellationError { }
@@ -102,7 +108,7 @@ struct NoticesView: View {
                         .font(.headline).foregroundStyle(notice.level == "error" ? Color.red : notice.level == "warning" ? Color.orange : Theme.green)
                     if let message = notice.message { Text(message).font(.subheadline) }
                     Text(Display.date(notice.createdAt)).font(.caption).foregroundStyle(.secondary)
-                    if notice.isRead == 0 && !store.isDemo {
+                    if notice.isRead == 0 {
                         Button("Als gelesen markieren") { Task { await markRead(notice) } }
                             .font(.caption).disabled(marking.contains(notice.id))
                     }
@@ -118,13 +124,14 @@ struct NoticesView: View {
         guard !loading else { return }
         loading = true; error = nil
         defer { loading = false }
-        if store.isDemo { notices = Demo.notices; loaded = true; return }
+        if store.isDemo { notices = store.demoNotices; loaded = true; return }
         guard let client = store.client else { return }
         do { notices = try await client.all("/api/v1/notifications"); loaded = true }
         catch is CancellationError { }
         catch { self.error = error.localizedDescription }
     }
     private func markRead(_ notice: Notice) async {
+        if store.isDemo { store.markDemoNoticeRead(id: notice.id); await load(); return }
         guard let client = store.client, !marking.contains(notice.id) else { return }
         struct Read: Encodable, Sendable { let ids: [Int] }
         marking.insert(notice.id)

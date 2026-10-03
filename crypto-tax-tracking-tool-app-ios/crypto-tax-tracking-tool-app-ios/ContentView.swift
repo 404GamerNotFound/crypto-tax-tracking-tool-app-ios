@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var store = AppStore()
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         Group {
             if store.isConnected {
@@ -20,7 +21,17 @@ struct ContentView: View {
                     NavigationStack { MoreView() }.tabItem { Label("Mehr", systemImage: "ellipsis.circle") }
                 }
                 .id(store.sessionID)
-            } else { ConnectionView() }
+            } else { NavigationStack { ConnectionView() }.id(store.sessionID) }
+        }
+        .privacySensitive(store.isConnected && !store.isDemo)
+        .accessibilityHidden(store.isConnected && scenePhase != .active)
+        .overlay {
+            if store.isConnected && scenePhase != .active {
+                ZStack {
+                    Theme.canvas.ignoresSafeArea()
+                    Label("CryptoBuch", systemImage: "lock.shield").font(.title2.weight(.semibold))
+                }.accessibilityLabel("CryptoBuch ist im Hintergrund")
+            }
         }
         .environmentObject(store)
         .tint(Theme.green)

@@ -14,6 +14,7 @@ struct DashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 DemoFlag()
+                if store.isDemo { Hint(text: "Beispielbewertung eines festen Szenarios. Zweckänderungen im Demo-Journal verändern diese Bewertungsbeispiele nicht.") }
                 if let portfolio {
                     balanceCard(portfolio)
                     if let error { Label(error, systemImage: "wifi.exclamationmark").font(.footnote).foregroundStyle(.red) }
@@ -112,7 +113,7 @@ struct DashboardView: View {
         guard !loading else { return }
         loading = true
         defer { loading = false }
-        if store.isDemo { portfolio = Demo.portfolio; quality = Demo.quality; updatedAt = Date(); return }
+        if store.isDemo { portfolio = Demo.portfolio; quality = store.demoQuality; updatedAt = Date(); return }
         guard let client = store.client else { return }
         error = nil
         qualityError = nil

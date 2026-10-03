@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Real publisher information is required before an App Store archive. -->
+    <key>publisher</key><string></string>
+    <key>contactEmail</key><string></string>
+    <key>privacyURL</key><string></string>
+    <key>supportURL</key><string></string>
+</dict>
+</plist>

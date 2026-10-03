@@ -65,7 +65,7 @@ struct JournalView: View {
         if reset { transactions = []; next = nil; total = 0; loaded = false }
         defer { if generation == token { loading = false } }
         if store.isDemo {
-            transactions = Demo.transactions.filter {
+            transactions = store.demoTransactions.filter {
                 (walletID == nil || $0.walletId == walletID) && (direction.isEmpty || $0.direction == direction) && (purpose.isEmpty || $0.purpose == purpose)
             }
             total = transactions.count; loaded = true; return
@@ -120,11 +120,11 @@ struct TransactionDetailView: View {
                 Button {
                     Task { await savePurpose() }
                 } label: {
-                    HStack { Text(store.isDemo ? "Speichern im Demomodus deaktiviert" : "Zweck speichern"); if saving { Spacer(); ProgressView() } }
-                }.disabled(store.isDemo || saving || purpose == (transaction.purpose ?? ""))
+                    HStack { Text(store.isDemo ? "Zweck im Beispiel ändern" : "Zweck speichern"); if saving { Spacer(); ProgressView() } }
+                }.disabled(saving || purpose == (transaction.purpose ?? ""))
                 if saved { Label("Zweck gespeichert", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.green) }
             } header: { Text("Zweck zuordnen") }
-            footer: { Text("Eine Zuordnung ändert die Auswertung auf dem Server. Manuelle Zwecke bleiben bei einer Synchronisierung erhalten.") }
+            footer: { Text(store.isDemo ? "Änderungen gelten nur für diese Demo-Sitzung. Die Beispielauswertungen bleiben unveränderte Szenarien." : "Eine Zuordnung ändert die Auswertung auf dem Server. Manuelle Zwecke bleiben bei einer Synchronisierung erhalten.") }
             Section("Historische Bewertung") {
                 LabeledContent("Kurs je Einheit", value: Display.money(transaction.priceTransactionEur))
                 LabeledContent("Herkunft", value: transaction.priceSource == "manual" ? "Manuell" : transaction.priceProvider ?? "Automatisch / unbekannt")
@@ -182,6 +182,10 @@ struct TransactionDetailView: View {
         catch { self.error = error.localizedDescription }
     }
     private func savePurpose() async {
+        if store.isDemo {
+            if let updated = store.updateDemoPurpose(id: transaction.id, purpose: purpose) { transaction = updated; saved = true }
+            return
+        }
         guard let client = store.client, !saving else { return }
         struct Update: Encodable, Sendable { let purpose: String }
         saving = true; saved = false; error = nil
