@@ -34,6 +34,7 @@ struct ContentView: View {
             }
         }
         .environmentObject(store)
+        .task { await store.restoreConnectionIfNeeded() }
         .tint(Theme.green)
         .environment(\.locale, Locale(identifier: "de_DE"))
         .alert("CryptoBuch", isPresented: Binding(get: { store.banner != nil }, set: { if !$0 { store.banner = nil } })) {

@@ -5,12 +5,12 @@ struct PrivacyView: View {
     var body: some View {
         List {
             Section("Datenverarbeitung") {
-                Text("CryptoBuch zeigt Daten deines selbst betriebenen Servers an. Erst wenn du auf Verbinden tippst, kontaktiert die App die eingegebene Adresse und lädt dein Portfolio, öffentliche Wallet-Adressen, Buchungen und Auswertungen.")
+                Text("CryptoBuch zeigt Daten deines selbst betriebenen Servers an. Mit Speichern & verbinden oder durch Auswahl eines gespeicherten Servers lädt die App dein Portfolio, öffentliche Wallet-Adressen, Buchungen und Auswertungen. Bei späteren App-Starts verbindet sie sich automatisch mit dem zuletzt erfolgreich verwendeten Server. Ohne gespeicherten Startserver erfolgt keine automatische Verbindung.")
                 Text("Änderst du einen Buchungszweck, startest du eine Synchronisierung oder markierst du einen Hinweis als gelesen, übermittelt die App den jeweiligen Auftrag an diesen Server. Der Server kann dabei auch deine Netzwerkadresse sehen.")
             }
             Section("Speicherung auf dem Gerät") {
-                Text("Gespeichert wird nur die zuletzt erfolgreich verwendete Serveradresse mit Protokoll und Port. Sie kann Teil deiner iOS-Gerätesicherung sein. Portfolio- und Buchungsdaten hält die App nur im Arbeitsspeicher; sie verwendet keinen dauerhaften Netzwerkcache und keine gespeicherten Cookies.")
-                Text("Mit Lokale Verbindungsdaten löschen entfernst du die gespeicherte Adresse, beendest die Verbindung und entfernst die angezeigten Daten aus der laufenden App-Sitzung.")
+                Text("Gespeichert werden deine Serveradressen mit Protokoll und Port sowie die Auswahl des zuletzt erfolgreich verwendeten Servers. Diese Einstellungen können Teil deiner iOS-Gerätesicherung sein. Portfolio- und Buchungsdaten hält die App nur im Arbeitsspeicher; sie verwendet keinen dauerhaften Netzwerkcache und keine gespeicherten Cookies.")
+                Text("Unter Mehr → Server wechseln / hinzufügen kannst du einzelne Adressen entfernen. Mit Lokale Verbindungsdaten löschen entfernst du die gesamte Serverliste und den Startserver, beendest die Verbindung und entfernst die angezeigten Daten aus der laufenden App-Sitzung.")
                 ForgetConnectionButton()
             }
             Section("Dein Server und externe Anbieter") {
@@ -50,6 +50,7 @@ struct SupportView: View {
         List {
             Section("Verbindung einrichten") {
                 Text("Starte deinen CryptoBuch-Server. Trage seine IP-Adresse oder seinen Hostnamen und den freigegebenen Port ein, üblicherweise 3000. Verwende auf dem iPhone die Adresse des Servers, nicht localhost.")
+                Text("Speichern & verbinden fügt die Adresse zur Serverliste hinzu. Unter Mehr → Server wechseln / hinzufügen kannst du weitere Server speichern, auswählen oder entfernen. Beim nächsten App-Start öffnet sich der zuletzt erfolgreich verwendete Server automatisch. Ist er nicht erreichbar, kannst du ihn über die Liste erneut öffnen oder einen anderen auswählen. Entfernst du den Startserver, wird bis zur nächsten erfolgreichen Auswahl keine automatische Verbindung aufgebaut.")
                 Text("iPhone und Server müssen sich erreichen können, etwa im selben WLAN oder über dein privates VPN. HTTPS erfordert ein gültiges, vom Gerät vertrautes Zertifikat. Der Server benötigt die API-Version 1.")
             }
             Section("Wenn der Abruf fehlschlägt") {
@@ -84,10 +85,10 @@ struct ForgetConnectionButton: View {
     @State private var confirming = false
     var body: some View {
         Button("Lokale Verbindungsdaten löschen", role: .destructive) { confirming = true }
-            .disabled(store.serverText.isEmpty && !store.isConnected)
+            .disabled(store.savedServers.isEmpty && !store.isConnected && !store.connecting)
             .confirmationDialog("Lokale Verbindungsdaten löschen?", isPresented: $confirming, titleVisibility: .visible) {
                 Button("Vom Gerät entfernen", role: .destructive) { store.forgetConnection() }
-            } message: { Text("Die gespeicherte Serveradresse und die aktuelle App-Sitzung werden entfernt. Daten und laufende Aufträge auf deinem Server bleiben erhalten.") }
+            } message: { Text("Alle gespeicherten Serveradressen, die Auswahl des Startservers und die aktuelle App-Sitzung werden entfernt. Daten und laufende Aufträge auf deinen Servern bleiben erhalten.") }
     }
 }
 

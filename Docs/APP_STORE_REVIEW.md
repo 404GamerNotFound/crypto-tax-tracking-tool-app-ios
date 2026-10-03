@@ -8,7 +8,7 @@ Recherche: 03.10.2026. Dies ist ein technischer Prüfstand, keine Zusage einer A
 | --- | --- |
 | Datenschutz in der App | Native Datenschutzseite vor der Verbindung und unter Mehr; Datenfluss, Empfänger, Aufbewahrung, Server-Löschung und lokale Berechtigung erklärt. |
 | Datenschutzmanifest | `PrivacyInfo.xcprivacy` im App-Target, UserDefaults mit `CA92.1`, kein Tracking. |
-| Lokale Datenkontrolle | Gespeicherte Serveradresse löschen, offene Netzwerkverbindung schließen und Sitzung verwerfen. Serverseitige Aufträge und Backups bleiben erhalten. |
+| Lokale Datenkontrolle | Einzelne gespeicherte Serveradressen entfernen oder die gesamte Serverliste samt Startserver löschen, offene Netzwerkverbindung schließen und Sitzung verwerfen. Serverseitige Aufträge und Backups bleiben erhalten. |
 | Support | Offline-Hilfe, iOS-Einstellungen, Versionsangaben und freiwilliges Teilen von Versionsdaten ohne Server-/Wallet-Adressen. Konfigurierbare öffentliche Support-/Datenschutzlinks. |
 | Prüfbare Oberfläche | Sichtbarer Demomodus; Zweckänderungen, gelesene Hinweise und simulierte Jobs bleiben in der Demo-Sitzung. Bewertungs- und Steuerbeispiele sind ausdrücklich feste Szenarien. |
 | Netzwerksicherheit | Keine globale ATS-Ausnahme, HTTP nur für lokale Adressen, normale Zertifikatsprüfung; verständlicher HTTP-Hinweis. |

@@ -1,4 +1,4 @@
-import SwiftUI
+import Foundation
 import Combine
 
 @MainActor
@@ -11,41 +11,80 @@ final class AppStore: ObservableObject {
     @Published var banner: String?
     @Published var dataRevision = 0
     @Published private(set) var sessionID = UUID()
-    @Published private(set) var serverText = ServerPreferences().address
+    @Published private(set) var serverText: String
+    @Published private(set) var savedServers: [SavedServer]
+    @Published private(set) var connectingAddress: String?
     @Published private(set) var demoTransactions = Demo.transactions
     @Published private(set) var demoJobs = Demo.jobs
     @Published private(set) var demoNotices = Demo.notices
     private var connectionAttempt = UUID()
     private var pendingClient: APIClient?
+    private let preferences: ServerPreferences
+    private let verifyConnection: (APIClient) async throws -> Metadata
+    private var didAttemptRestore = false
     var isConnected: Bool { client != nil || isDemo }
     var serverName: String { isDemo ? "Demomodus" : client?.address.url.host ?? "Server" }
 
+    init(preferences: ServerPreferences = ServerPreferences(),
+         verifyConnection: @escaping (APIClient) async throws -> Metadata = { try await $0.verify() }) {
+        self.preferences = preferences
+        self.verifyConnection = verifyConnection
+        serverText = preferences.address
+        savedServers = preferences.servers
+    }
+
+    func restoreConnectionIfNeeded() async {
+        guard !didAttemptRestore else { return }
+        didAttemptRestore = true
+        guard !isConnected, !connecting, !serverText.isEmpty else { return }
+        await connect(serverText)
+    }
+
     func connect(_ value: String) async {
         guard !connecting else { return }
+        didAttemptRestore = true
+        if isConnected { disconnect() }
         let attempt = UUID()
         connectionAttempt = attempt
         connecting = true
         connectionError = nil
-        defer { if connectionAttempt == attempt { connecting = false; pendingClient = nil } }
+        var candidate: APIClient?
+        defer {
+            if let candidate, client !== candidate { Task { await candidate.close() } }
+            if connectionAttempt == attempt {
+                connecting = false
+                connectingAddress = nil
+                pendingClient = nil
+            }
+        }
         do {
-            let address = try ServerAddress(value)
-            let candidate = APIClient(address: address)
-            pendingClient = candidate
-            let metadata = try await candidate.verify()
+            let server = try preferences.save(value)
+            savedServers = preferences.servers
+            connectingAddress = server.address
+            let address = try ServerAddress(server.address)
+            let newClient = APIClient(address: address)
+            candidate = newClient
+            pendingClient = newClient
+            let metadata = try await verifyConnection(newClient)
             try Task.checkCancellation()
             // A reset while the request is pending must not restore the deleted address.
-            guard connectionAttempt == attempt else { await candidate.close(); return }
+            guard connectionAttempt == attempt else { return }
             self.metadata = metadata
-            self.client = candidate
+            self.client = newClient
             self.isDemo = false
-            self.serverText = address.url.absoluteString
-            ServerPreferences().save(serverText)
+            preferences.markUsed(server)
+            self.serverText = preferences.address
             sessionID = UUID()
         } catch is CancellationError { }
-        catch { if connectionAttempt == attempt { connectionError = error.localizedDescription } }
+        catch {
+            if connectionAttempt == attempt {
+                connectionError = [connectingAddress, error.localizedDescription].compactMap { $0 }.joined(separator: "\n")
+            }
+        }
     }
 
     func demo() {
+        disconnect()
         demoTransactions = Demo.transactions
         demoJobs = Demo.jobs
         demoNotices = Demo.notices
@@ -57,8 +96,10 @@ final class AppStore: ObservableObject {
     }
 
     func disconnect() {
+        didAttemptRestore = true
         connectionAttempt = UUID()
         connecting = false
+        connectingAddress = nil
         if let pendingClient { Task { await pendingClient.close() } }
         pendingClient = nil
         if let client { Task { await client.close() } }
@@ -75,8 +116,19 @@ final class AppStore: ObservableObject {
 
     func forgetConnection() {
         disconnect()
-        ServerPreferences().forget()
+        preferences.forget()
+        savedServers = []
         serverText = ""
+    }
+
+    func removeServer(_ server: SavedServer) {
+        if connectingAddress == server.address || client?.address.url.absoluteString == server.address {
+            disconnect()
+        }
+        preferences.remove(server)
+        savedServers = preferences.servers
+        serverText = preferences.address
+        connectionError = nil
     }
 
     func queueSync(wallet: Wallet, exchangeID: Int?) async throws {

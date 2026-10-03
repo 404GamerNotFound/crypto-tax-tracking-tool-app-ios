@@ -36,12 +36,3 @@ struct Publication: Decodable, Sendable {
         return parts.url
     }
 }
-
-/// The only app-specific persistent value. Never clear unrelated defaults.
-struct ServerPreferences {
-    private let defaults: UserDefaults
-    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
-    var address: String { defaults.string(forKey: "serverURL") ?? "" }
-    func save(_ address: String) { defaults.set(address, forKey: "serverURL") }
-    func forget() { defaults.removeObject(forKey: "serverURL") }
-}

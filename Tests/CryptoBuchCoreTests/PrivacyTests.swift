@@ -19,10 +19,12 @@ final class PrivacyTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let preferences = ServerPreferences(defaults: defaults)
         defaults.set("preserved", forKey: "unrelated")
-        preferences.save("http://192.168.178.20:3000")
+        let server = try preferences.save("http://192.168.178.20:3000")
+        preferences.markUsed(server)
         XCTAssertEqual(preferences.address, "http://192.168.178.20:3000")
         preferences.forget()
         XCTAssertEqual(ServerPreferences(defaults: defaults).address, "")
+        XCTAssertTrue(ServerPreferences(defaults: defaults).servers.isEmpty)
         XCTAssertNil(defaults.object(forKey: "serverURL"))
         XCTAssertEqual(defaults.string(forKey: "unrelated"), "preserved")
     }

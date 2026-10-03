@@ -109,23 +109,24 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-        CB0000000000000000000001 /* Validate App Store metadata */ = {
-            isa = PBXShellScriptBuildPhase;
-            alwaysOutOfDate = 1;
-            buildActionMask = 2147483647;
-            files = ();
-            inputPaths = (
-                "$(SRCROOT)/../Tools/validate_submission.py",
-                "$(SRCROOT)/../Config/Info.plist",
-                "$(SRCROOT)/crypto-tax-tracking-tool-app-ios/Publication.plist",
-                "$(SRCROOT)/crypto-tax-tracking-tool-app-ios/PrivacyInfo.xcprivacy",
-            );
-            name = "Validate App Store metadata";
-            outputPaths = ();
-            runOnlyForDeploymentPostprocessing = 0;
-            shellPath = /bin/sh;
-            shellScript = "if [ \"$ACTION\" = \"install\" ] && [ \"$CONFIGURATION\" = \"Release\" ]; then\n  /usr/bin/python3 \"$SRCROOT/../Tools/validate_submission.py\"\nfi\n";
-        };
+		CB0000000000000000000001 /* Validate App Store metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			inputPaths = (
+				"$(SRCROOT)/../Tools/validate_submission.py",
+				"$(SRCROOT)/../Config/Info.plist",
+				"$(SRCROOT)/crypto-tax-tracking-tool-app-ios/Publication.plist",
+				"$(SRCROOT)/crypto-tax-tracking-tool-app-ios/PrivacyInfo.xcprivacy",
+			);
+			name = "Validate App Store metadata";
+			shellPath = /bin/sh;
+			shellScript = (
+				"if [ \"$ACTION\" = \"install\" ] && [ \"$CONFIGURATION\" = \"Release\" ]; then",
+				"  /usr/bin/python3 \"$SRCROOT/../Tools/validate_submission.py\"",
+				"fi",
+				"",
+			);
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */

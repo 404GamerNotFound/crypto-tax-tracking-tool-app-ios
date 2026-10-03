@@ -4,7 +4,7 @@ CryptoBuch is a native SwiftUI companion for a user-operated portfolio and bookk
 
 ## Offline walkthrough
 
-1. Launch the app. The first screen asks for a server IP/hostname and port. No network request is made before Connect.
+1. On a fresh installation, launch the app. The first screen asks for a server IP/hostname and port. No automatic request is made without a previously saved start server. After a successful connection, subsequent cold launches reconnect once to the last successfully used server. A failed connection returns to the saved list; it never activates the demo automatically.
 2. Privacy and Help are available on this screen without connecting or granting local-network permission.
 3. Tap **App mit Demodaten entdecken**. The visible demo label identifies fictional data; this option is available to every user and is not reviewer-specific.
 4. Review **Überblick**, **Quellen**, **Buchungen**, **Steuer**, and **Mehr**.
@@ -18,4 +18,4 @@ Provide a review-accessible CryptoBuch API v1 test instance, IP/hostname, port a
 
 The built-in demo does not exercise a real server job or recalculate the server's tax results. For those features, the reviewer must have access to a live test instance; do not describe the offline scenario as a replacement for this access. Discuss any exceptional review environment with Apple beforehand if needed.
 
-With the test server connected, changing a transaction purpose PATCHes the existing API, refreshing views retrieves the server's updated results, and synchronization POSTs to the server's serial job queue. App data is held in memory; the server address is the only saved app preference. Local HTTP supports a user's existing trusted LAN installation; remote servers require HTTPS and standard certificate validation.
+With the test server connected, changing a transaction purpose PATCHes the existing API, refreshing views retrieves the server's updated results, and synchronization POSTs to the server's serial job queue. App data is held in memory; only the server address list (protocol and port included) and the last successful selection are saved preferences. **Mehr → Server wechseln / hinzufügen** opens the saved list and allows adding, selecting and removing addresses. **Lokale Verbindungsdaten löschen** clears the entire list and the automatic start destination. Local HTTP supports a user's existing trusted LAN installation; remote servers require HTTPS and standard certificate validation.

@@ -7,15 +7,15 @@ Native SwiftUI-App für das bestehende CryptoBuch-Tool. Die App verwendet aussch
 1. `crypto-tax-tracking-tool-app-ios/crypto-tax-tracking-tool-app-ios.xcodeproj` in Xcode öffnen. Das vorhandene Projektformat stammt aus Xcode 27; die App unterstützt iOS/iPadOS 17 oder neuer.
 2. Einen iPhone- oder iPad-Simulator auswählen und mit **Run** starten. Für ein echtes Gerät bei Bedarf das eigene Signing-Team auswählen. Bundle-ID und vorhandenes Team wurden übernommen.
 3. Auf der ersten Seite **IP-Adresse bzw. Hostname** und **Port** des bestehenden Servers eingeben, z. B. `192.168.178.20` und `3000`. HTTPS aktivieren, wenn der Server TLS verwendet.
-4. **Verbinden** prüft zuerst `/api/v1` und `/api/v1/metadata`. Erst danach erscheint die App mit den Inhalten dieses Servers.
+4. **Speichern & verbinden** fügt die Adresse zur dauerhaften Serverliste hinzu und prüft zuerst `/api/v1` und `/api/v1/metadata`. Erst danach erscheint die App mit den Inhalten dieses Servers.
 
-Der Server muss separat laufen und vom Gerät erreichbar sein. Auf dem echten iPhone meint `localhost` das iPhone selbst; verwende dort die LAN-Adresse des Rechners/NAS. Im iOS-Simulator kann ein auf dem Mac laufender Server unter `127.0.0.1` erreicht werden. Den lokalen Netzwerkzugriff unter iOS erlauben. IP und Port lassen sich unter **Mehr** ändern. Die letzte Adresse wird vorbelegt; eine Verbindung wird ausdrücklich über den Startbildschirm aufgebaut.
+Der Server muss separat laufen und vom Gerät erreichbar sein. Auf dem echten iPhone meint `localhost` das iPhone selbst; verwende dort die LAN-Adresse des Rechners/NAS. Im iOS-Simulator kann ein auf dem Mac laufender Server unter `127.0.0.1` erreicht werden. Den lokalen Netzwerkzugriff unter iOS erlauben. Unter **Mehr → Server wechseln / hinzufügen** können weitere IP-Adressen mit Port und HTTPS-Einstellung gespeichert, ausgewählt und einzeln entfernt werden. Gleiche Adressen werden nicht doppelt angelegt; andere Ports oder Protokolle bleiben getrennte Einträge. Bei jedem Kaltstart verbindet sich die App einmal automatisch mit dem zuletzt erfolgreich verwendeten Server. Bei einem Fehler bleiben die Serverliste und eine erneute Auswahl verfügbar; der Verbindungsversuch ist abbrechbar. Neue gültige Adressen bleiben auch bei Nichterreichbarkeit gespeichert, ersetzen den Startserver aber erst nach erfolgreicher API-Prüfung. Wird der Startserver gelöscht, erfolgt bis zur nächsten erfolgreichen Auswahl keine automatische Verbindung.
 
 Der separat auswählbare Demomodus enthält klar gekennzeichnete, fiktive Daten. Zweckänderungen, gelesene Hinweise und simulierte Jobs bleiben nur innerhalb seiner Sitzung. Bewertungs- und Steuerbeispiele sind feste Szenarien. Er führt keine API-Schreibaktionen aus und wird niemals als Ersatz für einen fehlgeschlagenen Serverabruf angezeigt.
 
 ## App-Store-Vorbereitung
 
-Datenschutz und Hilfe sind bereits vor der Serververbindung sowie unter **Mehr** erreichbar. **Lokale Verbindungsdaten löschen** entfernt die gespeicherte Adresse und beendet die Sitzung; Serverdaten werden dabei nicht gelöscht. Die native App enthält ein Privacy-Manifest, eine Erklärung der OS-eigenen HTTPS-Verschlüsselung und eine Abdeckung der verbundenen Ansicht im Hintergrund.
+Datenschutz und Hilfe sind bereits vor der Serververbindung sowie unter **Mehr** erreichbar. **Lokale Verbindungsdaten löschen** entfernt die gesamte Serverliste und den Startserver und beendet die Sitzung; Serverdaten werden dabei nicht gelöscht. Die native App enthält ein Privacy-Manifest, eine Erklärung der OS-eigenen HTTPS-Verschlüsselung und eine Abdeckung der verbundenen Ansicht im Hintergrund.
 
 Vor einer Einreichung müssen reale Herausgeber-/Kontaktangaben sowie öffentliche HTTPS-Adressen in `crypto-tax-tracking-tool-app-ios/crypto-tax-tracking-tool-app-ios/Publication.plist` ergänzt werden. Fehlende Angaben verhindern ein Release-Archiv, aber keinen normalen Entwicklungs-Build. Die Seiten wurden nicht veröffentlicht. Siehe [Recherche und offene Einreichungsschritte](Docs/APP_STORE_REVIEW.md), [Review-Anleitung](Docs/REVIEW_NOTES.md) und [Metadatenentwurf](Docs/STORE_METADATA.json).
 
@@ -41,7 +41,8 @@ Das Journal lädt 50 Einträge je Seite in der von der API gelieferten ID-Reihen
 
 - `Core/APIClient.swift`: typisierter, asynchroner URLSession-Client, Versionsprüfung, JSON-Fehler, Paginierung und URL-Validierung. Keine Abhängigkeiten von Drittanbietern.
 - `Core/Models.swift`: API-Modelle mit `Decimal` für Beträge. Fehlende Preise bleiben `nil`; EUR-Werte werden nicht als null Euro erfunden.
-- `AppStore.swift`: Verbindung und Sitzungswechsel. Nur die Serveradresse wird in `UserDefaults` gespeichert. `URLSessionConfiguration.ephemeral`, kein URL-Cache, keine Cookies und keine gespeicherten HTTP-Zugangsdaten.
+- `Core/AppStore.swift`: Verbindung, einmalige Wiederverbindung beim Start und Sitzungswechsel. Abbruch und Löschen entwerten laufende Verbindungsversuche, damit verspätete Antworten keine alte Sitzung wiederherstellen. `URLSessionConfiguration.ephemeral`, kein URL-Cache, keine Cookies und keine gespeicherten HTTP-Zugangsdaten.
+- `Core/ServerPreferences.swift`: Nur die Serverliste und der zuletzt erfolgreich verwendete Server werden in `UserDefaults` gespeichert. Die bisherige Einstellung `serverURL` wird beim ersten Lesen verlustfrei in die neue Liste übernommen und danach entfernt. Ungültige gespeicherte Adressen werden nicht verwendet.
 - `Views/`: native SwiftUI-Ansichten; der Buchwertverlauf nutzt Swift Charts. Oberflächensprache Deutsch, iPhone/iPad, Systemfarben für Hell-/Dunkelmodus.
 - `Config/Info.plist`: lokaler Netzwerkzugriff und auf private/Loopback-IP-Bereiche beschränkte HTTP-Ausnahmen. Öffentliche Server benötigen HTTPS. Zertifikatsprüfungen werden nicht umgangen, Weiterleitungen abgelehnt. Hintergrund: [Apples Dokumentation zu lokalem Netzwerkzugriff und ATS](https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking).
 
@@ -67,7 +68,7 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-Die Core-Tests prüfen IP/Port, IPv6, HTTPS, ungültige Zugangsdaten-URLs, fremde API-Links, Paginierung, Endlosschleifen, Dezimalwerte, fehlende Kurse und API-Fehler. Für einen zusätzlichen lesenden Vertragstest gegen eine **separate Testinstanz**:
+Die Core-Tests prüfen Speicherung mehrerer Server, Migration der bisherigen Adresse, Duplikate, automatische Verbindung, Serverwechsel, Offline-Verhalten, Abbruch/Löschen während eines Abrufs sowie IP/Port, IPv6, HTTPS, ungültige Zugangsdaten-URLs, fremde API-Links, Paginierung, Endlosschleifen, Dezimalwerte, fehlende Kurse und API-Fehler. Für einen zusätzlichen lesenden Vertragstest gegen eine **separate Testinstanz**:
 
 ```sh
 CRYPTOBUCH_TEST_SERVER=http://127.0.0.1:3085 swift test --filter ServerIntegrationTests

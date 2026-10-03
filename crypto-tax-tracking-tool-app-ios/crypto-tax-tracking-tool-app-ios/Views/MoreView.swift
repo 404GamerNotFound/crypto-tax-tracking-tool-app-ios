@@ -15,7 +15,7 @@ struct MoreView: View {
                     Text(store.serverText).font(.footnote).foregroundStyle(.secondary).textSelection(.enabled)
                     LabeledContent("API-Version", value: store.metadata?.apiVersion ?? "Unbekannt")
                 }
-                Button("IP-Adresse / Port ändern") { store.disconnect() }
+                Button("Server wechseln / hinzufügen") { store.disconnect() }
                 ForgetConnectionButton()
             }
             Section("Hilfe & Datenschutz") {
@@ -25,7 +25,7 @@ struct MoreView: View {
             Section("CryptoBuch für iOS") {
                 Label("Native App · Version 1.0", systemImage: "book.closed")
                 Text("Die App nutzt die bestehende CryptoBuch-API. Portfolio-Berechnung, Synchronisierung und Steuerauswertung laufen auf deinem Server.")
-                Text("Auf diesem Gerät wird nur die Serveradresse gespeichert. Abgerufene Finanzdaten werden nicht dauerhaft zwischengespeichert.")
+                Text("Auf diesem Gerät werden die Serverliste und der zuletzt verwendete Server gespeichert. Abgerufene Finanzdaten werden nicht dauerhaft zwischengespeichert.")
                 Text("Wallets, Börsen-Zugangsdaten, Imports, Belegdateien und Steuerprofile verwaltest du weiterhin im bestehenden Web-Tool.")
             }.font(.footnote)
         }.navigationTitle("Mehr")
