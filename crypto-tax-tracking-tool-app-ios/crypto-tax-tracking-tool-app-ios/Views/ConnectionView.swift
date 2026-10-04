@@ -9,11 +9,7 @@ struct ConnectionView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                HStack {
-                    Image(systemName: "book.closed.fill").font(.title2).foregroundStyle(Theme.mint)
-                        .frame(width: 54, height: 54).background(Theme.green, in: RoundedRectangle(cornerRadius: 18))
-                    Text("CryptoBuch").font(.title2.weight(.bold))
-                }.padding(.top, 40)
+                BrandLockup().padding(.top, 24)
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Dein Portfolio.\nKlar dokumentiert.")
                         .font(.system(.largeTitle, design: .rounded, weight: .bold)).tracking(-0.6)
@@ -67,6 +63,7 @@ struct ConnectionView: View {
                         .accessibilityIdentifier("saveAndConnect")
                     Hint(text: "Trage die IP-Adresse deines CryptoBuch-Servers und dessen Port ein. iPhone und Server müssen sich erreichen können, z. B. im selben WLAN. localhost bezeichnet auf dem iPhone das iPhone selbst.")
                 }.disabled(store.connecting)
+                if store.savedServers.isEmpty { BrandIllustration() }
                 Button { store.demo() } label: {
                     HStack { Text("App mit Demodaten entdecken"); Spacer(); Image(systemName: "arrow.up.right") }
                         .font(.subheadline.weight(.semibold)).padding(.horizontal, 4)

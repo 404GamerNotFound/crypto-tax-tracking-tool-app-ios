@@ -140,6 +140,27 @@ actor APIClient {
         return job
     }
 
+    func createWallet(_ body: WalletCreation) async throws -> Int {
+        try body.validate()
+        let result: WalletMutation = try await send("/api/wallets", body: body)
+        guard result.id > 0 else { throw APIError.invalidData }
+        return result.id
+    }
+
+    func updateWallet(id: Int, metadata: WalletMetadataUpdate) async throws {
+        guard id > 0 else { throw APIError.invalidData }
+        try metadata.validate()
+        let result: WalletMutation = try await send("/api/wallets/\(id)", method: "PATCH", body: metadata)
+        guard result.id == id else { throw APIError.invalidData }
+    }
+
+    func deleteWallet(id: Int) async throws {
+        guard id > 0 else { throw APIError.invalidData }
+        let _: Acknowledgement = try await request("/api/wallets/\(id)", method: "DELETE")
+    }
+
+    private struct WalletMutation: Decodable, Sendable { let id: Int }
+
     func get<T: Decodable & Sendable>(_ path: String, query: [URLQueryItem] = []) async throws -> T {
         try await request(path, query: query, method: "GET")
     }
@@ -183,6 +204,7 @@ actor APIClient {
                 ?? "Serveranfrage fehlgeschlagen. Bitte Adresse und Zugriff prüfen."
             throw APIError.server(http.statusCode, String(message.prefix(500)))
         }
+        if http.statusCode == 204, let acknowledgement = Acknowledgement() as? T { return acknowledgement }
         do { return try Self.decoder().decode(T.self, from: data) }
         catch { throw APIError.invalidData }
     }

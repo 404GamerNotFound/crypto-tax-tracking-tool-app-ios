@@ -168,6 +168,88 @@ final class APIClientTests: XCTestCase {
         await protected.close()
     }
 
+    func testWalletCreationUsesLegacyWriteResponseAndPublicSourceBody() async throws {
+        let client = try makeClient { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.url?.path, "/api/wallets")
+            let body = try Self.jsonBody(request)
+            XCTAssertEqual(body["sourceType"] as? String, "stake")
+            XCTAssertEqual(body["chain"] as? String, "ADA")
+            XCTAssertEqual(body["groupName"] as? String, "Privat")
+            XCTAssertEqual(body["tags"] as? [String], ["Langfristig"])
+            // Existing write endpoints return tags as a JSON string, not an array.
+            return (201, #"{"id":12,"tags":"[\"Langfristig\"]"}"#)
+        }
+        let id = try await client.createWallet(WalletCreation(chain: "ADA", address: "stake1" + String(repeating: "a", count: 50), sourceType: "stake", xpubAddressType: "p2wpkh", label: "Wallet", groupName: "Privat", tags: ["Langfristig"]))
+        XCTAssertEqual(id, 12)
+        await client.close()
+    }
+
+    func testWalletEditSendsOnlyMetadataAndCanClearValues() async throws {
+        let client = try makeClient { request in
+            XCTAssertEqual(request.httpMethod, "PATCH")
+            XCTAssertEqual(request.url?.path, "/api/wallets/12")
+            let body = try Self.jsonBody(request)
+            XCTAssertEqual(Set(body.keys), ["label", "groupName", "tags"])
+            XCTAssertEqual(body["label"] as? String, "Neu")
+            XCTAssertEqual(body["groupName"] as? String, "")
+            XCTAssertEqual(body["tags"] as? [String], [])
+            return (200, #"{"id":12,"tags":"[]"}"#)
+        }
+        try await client.updateWallet(id: 12, metadata: .init(label: "Neu", groupName: "", tags: []))
+        await client.close()
+    }
+
+    func testWalletDeleteAcceptsEmpty204AndUsesNoBody() async throws {
+        let client = try makeClient { request in
+            XCTAssertEqual(request.httpMethod, "DELETE")
+            XCTAssertEqual(request.url?.path, "/api/wallets/12")
+            XCTAssertNil(request.httpBody)
+            XCTAssertNil(request.httpBodyStream)
+            return (204, "")
+        }
+        try await client.deleteWallet(id: 12)
+        await client.close()
+    }
+
+    func testWalletDeleteErrorsAreNotMistakenForSuccess() async throws {
+        let client = try makeClient { _ in (404, #"{"error":"Wallet nicht gefunden."}"#) }
+        do { try await client.deleteWallet(id: 12); XCTFail("Expected missing wallet") }
+        catch { XCTAssertEqual(error as? APIError, .server(404, "Wallet nicht gefunden.")) }
+        await client.close()
+    }
+
+    func testWalletEditRejectsWrongIdentity() async throws {
+        let client = try makeClient { _ in (200, #"{"id":13}"#) }
+        do { try await client.updateWallet(id: 12, metadata: .init(label: "Neu", groupName: "", tags: [])); XCTFail("Expected identity check") }
+        catch { XCTAssertEqual(error as? APIError, .invalidData) }
+        await client.close()
+    }
+
+    func testPrivateWalletInputNeverReachesNetwork() async throws {
+        let client = try makeClient { _ in XCTFail("Private input must not be sent"); return (500, "") }
+        do {
+            _ = try await client.createWallet(.init(chain: "BTC", address: "xprv-private-test-placeholder", sourceType: "xpub", xpubAddressType: "p2wpkh", label: "", groupName: "", tags: []))
+            XCTFail("Expected validation")
+        } catch { XCTAssertTrue(error is WalletInputError) }
+        await client.close()
+    }
+
+    private static func jsonBody(_ request: URLRequest) throws -> [String: Any] {
+        var data = request.httpBody ?? Data()
+        if data.isEmpty, let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+            var buffer = [UInt8](repeating: 0, count: 1024)
+            while stream.hasBytesAvailable {
+                let size = stream.read(&buffer, maxLength: buffer.count)
+                if size <= 0 { break }
+                data.append(contentsOf: buffer.prefix(size))
+            }
+        }
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+
     private func makeClient(handler: @escaping (URLRequest) throws -> (Int, String)) throws -> APIClient {
         StubProtocol.handler = handler
         let configuration = URLSessionConfiguration.ephemeral

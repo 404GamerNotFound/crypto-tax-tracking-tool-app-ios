@@ -26,6 +26,7 @@ Vor einer Einreichung müssen reale Herausgeber-/Kontaktangaben sowie öffentlic
 | Verbindungsprüfung, unterstützte Zwecke | `GET /api/v1`, `GET /api/v1/metadata` |
 | Portfolio, Bestände, Buchwertverlauf | `GET /api/portfolio` |
 | Datenqualität | `GET /api/data-quality` |
+| Wallet hinzufügen / bearbeiten / löschen | `POST /api/wallets`, `PATCH /api/wallets/{id}`, `DELETE /api/wallets/{id}` |
 | Wallets und Börsenkonten | `GET /api/v1/wallets`, `GET /api/v1/exchange-connections` |
 | Buchungsjournal, Serverfilter, weitere Seiten | `GET /api/v1/transactions` und `links.next` |
 | Buchung, zugehörige Wallet, Belegmetadaten, Kurs-Audit | `GET /api/v1/{transactions,wallets}/{id}`, `GET /api/v1/documents`, `GET /api/v1/price-audit` |
@@ -51,7 +52,7 @@ Es werden keine Seeds, Private Keys, Signaturen oder Transaktionsentwürfe abgef
 
 ## Grenzen dieser Version
 
-Wallets/Börsenkonten anlegen, CSV-Import, Ledger, Belegdateien, manuelle Kurskorrekturen, Backups und Steuerprofile bleiben im bestehenden Web-Tool. Die App zeigt Belegmetadaten und Kurskorrekturen an, lädt aber keine Belegdateien herunter. Es gibt keine Push-Benachrichtigungen, keinen Offline-Datenspeicher und keine eigene Blockchain-Abfrage.
+Börsenkonten anlegen, CSV-Import, Ledger, Belegdateien, manuelle Kurskorrekturen, Backups und Steuerprofile bleiben im bestehenden Web-Tool. Die App zeigt Belegmetadaten und Kurskorrekturen an, lädt aber keine Belegdateien herunter. Es gibt keine Push-Benachrichtigungen, keinen Offline-Datenspeicher und keine eigene Blockchain-Abfrage.
 
 Steuerwerte und historische Bewertungen bleiben **unverbindliche Schätzungen und Organisationshilfe, keine Steuerberatung**. Unvollständige Datensätze werden sichtbar ausgewiesen. Alle fachlichen Berechnungen und ihre Einschränkungen werden unverändert vom bestehenden Server übernommen. Es sind keine Datenmigrationen am Backend erforderlich.
 
@@ -76,3 +77,17 @@ CRYPTOBUCH_TEST_SERVER=http://127.0.0.1:3085 swift test --filter ServerIntegrati
 ```
 
 Ohne diese Umgebungsvariable wird der Integrationstest übersprungen. Die Unit-Tests rufen keine externen Dienste auf. Ein signierter Geräte-Build und eine App-Store-Veröffentlichung sind separate Schritte.
+
+### Wallet-Verwaltung in der App
+
+Unter **Quellen → +** lassen sich öffentliche Wallets mit Netzwerk, Quellentyp, Adresse, Name, Gruppe und Tags hinzufügen. Die Auswahl nutzt `/api/v1/metadata`; Bitcoin unterstützt einzelne Adressen und xpub/ypub/zpub mit BIP44/49/84, Cardano auch Stake-Adressen. Nach dem Anlegen kann die Synchronisierung in der Wallet-Detailansicht separat gestartet werden.
+
+In der Detailansicht können Name, Gruppe und Tags geändert oder die Wallet nach ausdrücklicher Bestätigung gelöscht werden. Netzwerk, öffentliche Adresse und Quellentyp bleiben unveränderlich, damit vorhandene Buchungen nicht einer anderen Quelle zugeordnet werden. Löschen entfernt auch die abhängigen Buchungen, Verknüpfungen und lokalen Belege auf dem Server; die Blockchain und Coins bleiben unverändert. Die App verarbeitet die leere HTTP-204-Antwort korrekt und lädt betroffene Ansichten neu. Im Demomodus sind Schreibaktionen für Wallets deaktiviert.
+
+POST/PATCH verwenden das bestehende Schreibformat (camelCase; `tags` in der Antwort als JSON-String). Die App wertet die bestätigte ID aus und lädt anschließend normalisierte Wallet-Daten über die v1-Lese-API. Netzwerkfehler, Dubletten (409), ungültige Eingaben und verschwundene Wallets (404) bleiben sichtbar; fehlgeschlagene Schreibaktionen werden nicht automatisch wiederholt.
+
+### Logo und App-Bilder
+
+Die native App verwendet eine eigene CryptoBuch-Bildmarke und eine passende Journal-Illustration. Das neue `CryptoBuchIcon` ist als iOS-App-Icon konfiguriert. Logo und Illustration sind lokale Asset-Kataloge; sie erscheinen in der Verbindungseinrichtung, im Überblick, bei leeren Wallet-/Portfolio-Ansichten, in der Hilfe und auf der Sichtschutzansicht im Hintergrund. Es werden keine Bilder aus dem Netz nachgeladen. Texte bleiben native, skalierbare SwiftUI-Elemente; dekorative Bilder sind für VoiceOver ausgeblendet.
+
+Originale, Gestaltung und die verwendeten Imagegen-Prompts sind unter [Docs/Branding](Docs/Branding/README.md) dokumentiert. Das frühere App-Icon bleibt als unbenutztes `AppIcon`-Set erhalten.

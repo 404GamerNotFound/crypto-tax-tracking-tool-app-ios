@@ -40,7 +40,7 @@ struct DashboardView: View {
                     Card {
                         HStack { Text("Deine Bestände").font(.headline); Spacer(); Text("\(portfolio.positions.count) Assets").font(.caption).foregroundStyle(.secondary) }
                         if portfolio.positions.isEmpty {
-                            Hint(text: "Noch keine Bestände vorhanden. Füge im Web-Tool eine öffentliche Wallet oder ein Börsenkonto hinzu.")
+                            BrandEmptyState(title: "Dein Portfolio beginnt hier", message: "Füge unter Quellen eine öffentliche Wallet hinzu und starte ihre Synchronisierung. Börsenkonten richtest du im Web-Tool ein.")
                         }
                         ForEach(Array(portfolio.positions.enumerated()), id: \.element.id) { index, holding in
                             VStack(spacing: 10) {
@@ -71,7 +71,10 @@ struct DashboardView: View {
             }.padding(20).frame(maxWidth: 1000).frame(maxWidth: .infinity)
         }
         .background(Theme.canvas).navigationTitle("Überblick")
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { Label(store.serverName, systemImage: store.isDemo ? "sparkles" : "externaldrive.connected.to.line.below").font(.caption).foregroundStyle(.secondary) } }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) { BrandLogo(size: 30) }
+            ToolbarItem(placement: .topBarTrailing) { Label(store.serverName, systemImage: store.isDemo ? "sparkles" : "externaldrive.connected.to.line.below").font(.caption).foregroundStyle(.secondary) }
+        }
         .task(id: store.dataRevision) { await load() }.refreshable { await load() }
     }
 

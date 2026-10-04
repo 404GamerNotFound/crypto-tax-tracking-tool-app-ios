@@ -29,7 +29,12 @@ struct ContentView: View {
             if store.isConnected && scenePhase != .active {
                 ZStack {
                     Theme.canvas.ignoresSafeArea()
-                    Label("CryptoBuch", systemImage: "lock.shield").font(.title2.weight(.semibold))
+                    VStack(spacing: 18) {
+                        BrandLogo(size: 88)
+                        Text("CryptoBuch").font(.title2.weight(.semibold))
+                        Label("Geschützt im Hintergrund", systemImage: "lock.fill")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                 }.accessibilityLabel("CryptoBuch ist im Hintergrund")
             }
         }
