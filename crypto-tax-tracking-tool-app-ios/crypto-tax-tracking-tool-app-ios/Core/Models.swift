@@ -46,6 +46,7 @@ struct Transaction: Decodable, Identifiable, Sendable {
     let asset: String
     let assetSymbol: String?
     let assetName: String?
+    let assetType: String?
     let amount: Decimal
     let fee: Decimal
     let feeAsset: String?
@@ -58,6 +59,32 @@ struct Transaction: Decodable, Identifiable, Sendable {
     var symbol: String { assetSymbol ?? asset }
     var historicValue: Decimal? { priceTransactionEur.map { $0 * amount } }
     var directionName: String { direction == "in" ? "Eingang" : direction == "out" ? "Ausgang" : "Intern" }
+    var priceFetchUnavailableReason: String? {
+        if priceSource == "manual" { return "Dieser Kurs ist manuell oder durch einen Import geschützt. Die Automatik kann im Web-Tool ausdrücklich aktiviert werden." }
+        if timestamp?.isEmpty != false { return "Für den Kursabruf fehlt ein Buchungsdatum." }
+        if assetType == "nft" { return "Für NFTs ist kein automatischer historischer EUR-Kurs verfügbar." }
+        return nil
+    }
+}
+
+struct PriceFetchReceipt: Decodable, Sendable {
+    let transactionId: Int
+    let job: PriceFetchJob
+    let reused: Bool
+}
+
+struct PriceFetchJob: Decodable, Sendable {
+    let id: Int
+    let status: String
+    let errorMessage: String?
+    let result: Result?
+    struct Result: Decodable, Sendable {
+        let transactionId: Int
+        let outcome: String
+        let updated: Int
+        let hint: String?
+    }
+    var isActive: Bool { status == "queued" || status == "running" }
 }
 
 struct Portfolio: Decodable, Sendable {

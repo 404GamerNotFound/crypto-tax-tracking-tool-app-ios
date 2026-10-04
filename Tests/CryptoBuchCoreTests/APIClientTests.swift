@@ -131,6 +131,43 @@ final class APIClientTests: XCTestCase {
         let _: Acknowledgement = try await client.send("/api/transactions/7", method: "PATCH", body: Update(purpose: "Kauf"))
     }
 
+    func testRequestsHistoricalPriceForOnlySelectedTransaction() async throws {
+        let client = try makeClient { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.url?.path, "/api/transactions/7/historical-price/fetch")
+            return (202, "{\"transactionId\":7,\"reused\":true,\"job\":{\"id\":42,\"status\":\"running\"}}")
+        }
+        let result = try await client.requestHistoricalPrice(transactionID: 7)
+        XCTAssertEqual(result.job.id, 42)
+        XCTAssertTrue(result.reused)
+        await client.close()
+    }
+
+    func testPriceJobDecodesUnavailableResultWithoutInventingAPrice() async throws {
+        let client = try makeClient { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/api/jobs/42")
+            return (200, "{\"id\":42,\"status\":\"success\",\"result\":{\"transactionId\":7,\"outcome\":\"unavailable\",\"updated\":0,\"hint\":\"Kein Kurs verfügbar.\"}}")
+        }
+        let job = try await client.historicalPriceJob(id: 42)
+        XCTAssertFalse(job.isActive)
+        XCTAssertEqual(job.result?.outcome, "unavailable")
+        XCTAssertEqual(job.result?.updated, 0)
+        XCTAssertEqual(job.result?.hint, "Kein Kurs verfügbar.")
+        await client.close()
+    }
+
+    func testPriceRequestRejectsMismatchedTransactionAndProtectedPrices() async throws {
+        let mismatch = try makeClient { _ in (202, "{\"transactionId\":8,\"reused\":false,\"job\":{\"id\":42,\"status\":\"queued\"}}") }
+        do { _ = try await mismatch.requestHistoricalPrice(transactionID: 7); XCTFail("Expected identity validation") }
+        catch { XCTAssertEqual(error as? APIError, .invalidData) }
+        await mismatch.close()
+        let protected = try makeClient { _ in (409, "{\"error\":\"Dieser Kurs ist manuell geschützt.\"}") }
+        do { _ = try await protected.requestHistoricalPrice(transactionID: 7); XCTFail("Expected conflict") }
+        catch { XCTAssertEqual(error as? APIError, .server(409, "Dieser Kurs ist manuell geschützt.")) }
+        await protected.close()
+    }
+
     private func makeClient(handler: @escaping (URLRequest) throws -> (Int, String)) throws -> APIClient {
         StubProtocol.handler = handler
         let configuration = URLSessionConfiguration.ephemeral

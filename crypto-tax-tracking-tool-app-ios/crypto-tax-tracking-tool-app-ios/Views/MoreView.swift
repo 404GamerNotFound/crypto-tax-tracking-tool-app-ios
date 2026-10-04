@@ -78,7 +78,7 @@ struct JobsView: View {
     }
     private func title(_ value: String) -> String {
         if value == "demo-sync" { return "Demo-Synchronisierung" }
-        return ["wallet-sync": "Wallet-Synchronisierung", "wallet_sync": "Wallet-Synchronisierung", "exchange-sync": "Börsen-Synchronisierung", "exchange_sync": "Börsen-Synchronisierung", "price-backfill": "Historische Kurse", "historical-price-backfill": "Historische Kurse"][value] ?? value
+        return ["wallet-sync": "Wallet-Synchronisierung", "wallet_sync": "Wallet-Synchronisierung", "exchange-sync": "Börsen-Synchronisierung", "exchange_sync": "Börsen-Synchronisierung", "price_backfill": "Historische Kurse", "price-backfill": "Historische Kurse", "historical-price-backfill": "Historische Kurse"][value] ?? value
     }
     private func load() async {
         guard !loading else { return }

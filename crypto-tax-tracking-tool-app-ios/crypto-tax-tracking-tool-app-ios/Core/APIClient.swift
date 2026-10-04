@@ -127,6 +127,19 @@ actor APIClient {
 
     func close() { session.invalidateAndCancel() }
 
+    func requestHistoricalPrice(transactionID: Int) async throws -> PriceFetchReceipt {
+        struct EmptyBody: Encodable, Sendable {}
+        let receipt: PriceFetchReceipt = try await send("/api/transactions/\(transactionID)/historical-price/fetch", body: EmptyBody())
+        guard receipt.transactionId == transactionID else { throw APIError.invalidData }
+        return receipt
+    }
+
+    func historicalPriceJob(id: Int) async throws -> PriceFetchJob {
+        let job: PriceFetchJob = try await get("/api/jobs/\(id)")
+        guard job.id == id else { throw APIError.invalidData }
+        return job
+    }
+
     func get<T: Decodable & Sendable>(_ path: String, query: [URLQueryItem] = []) async throws -> T {
         try await request(path, query: query, method: "GET")
     }

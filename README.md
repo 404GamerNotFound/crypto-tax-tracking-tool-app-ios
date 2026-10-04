@@ -29,13 +29,14 @@ Vor einer Einreichung müssen reale Herausgeber-/Kontaktangaben sowie öffentlic
 | Wallets und Börsenkonten | `GET /api/v1/wallets`, `GET /api/v1/exchange-connections` |
 | Buchungsjournal, Serverfilter, weitere Seiten | `GET /api/v1/transactions` und `links.next` |
 | Buchung, zugehörige Wallet, Belegmetadaten, Kurs-Audit | `GET /api/v1/{transactions,wallets}/{id}`, `GET /api/v1/documents`, `GET /api/v1/price-audit` |
+| Historischen EUR-Kurs einer Buchung neu abrufen | `POST /api/transactions/{id}/historical-price/fetch`, anschließend `GET /api/jobs/{id}` und erneuter Buchungs-/Audit-Abruf |
 | Manuellen Zweck speichern | `PATCH /api/transactions/{id}` |
 | Wallet-/Börsensynchronisierung einplanen | `POST /api/jobs/sync`, `POST /api/exchange-connections/{id}/sync` |
 | Jobstatus | `GET /api/v1/jobs` |
 | Hinweise lesen und als gelesen markieren | `GET /api/v1/notifications`, `PATCH /api/notifications/read` |
 | Jahresauswertung gemäß Serverprofil | `GET /api/tax-report?year=…` |
 
-Das Journal lädt 50 Einträge je Seite in der von der API gelieferten ID-Reihenfolge. Die Anzeige nennt die geladene und gesamte Anzahl. Richtung und Zweck werden serverseitig gefiltert, die Textsuche durchsucht ausdrücklich nur geladene Einträge. Andere Listen folgen der API-Paginierung vollständig (bis maximal 200 Seiten). Bei aktiven Jobs erfolgt im geöffneten Vordergrund alle fünf Sekunden eine Statusabfrage. Auf den Übersichten aktualisiert Ziehen nach unten die Daten.
+Das Journal lädt 50 Einträge je Seite in der von der API gelieferten ID-Reihenfolge. Die Anzeige nennt die geladene und gesamte Anzahl. Richtung und Zweck werden serverseitig gefiltert, die Textsuche durchsucht ausdrücklich nur geladene Einträge. Andere Listen folgen der API-Paginierung vollständig (bis maximal 200 Seiten). Bei aktiven Jobs erfolgt im geöffneten Vordergrund alle fünf Sekunden eine Statusabfrage. Auf den Übersichten aktualisiert Ziehen nach unten die Daten. In den Buchungsdetails startet **Jetzt Kursdaten abrufen** einen gezielten historischen EUR-Kursabruf. Die App verfolgt den Job nur in der aktiven Ansicht und lädt danach Kurs, Herkunft und Audit neu. Fehlende Kurse bleiben offen; manuelle/importierte Kurse sind geschützt. Der Server arbeitet nach Verlassen der Ansicht weiter. Die Aktion benötigt einen Backend-Stand mit diesem Endpunkt; im Demomodus findet kein Kursabruf statt.
 
 ## Architektur und Datenschutz
 

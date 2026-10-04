@@ -89,6 +89,7 @@ struct JournalView: View {
 
 struct TransactionDetailView: View {
     @EnvironmentObject private var store: AppStore
+    @Environment(\.scenePhase) private var scenePhase
     @State var transaction: Transaction
     @State private var documents: [Document] = []
     @State private var audit: [PriceAudit] = []
@@ -98,6 +99,13 @@ struct TransactionDetailView: View {
     @State private var saving = false
     @State private var loaded = false
     @State private var saved = false
+    @State private var priceJobID: Int?
+    @State private var requestingPrice = false
+    @State private var pollingPrice = false
+    @State private var pricePollRevision = 0
+    @State private var pricePollToken = UUID()
+    @State private var priceStatus: String?
+    @State private var priceError: String?
     var body: some View {
         List {
             DemoFlag().listRowBackground(Color.clear)
@@ -129,6 +137,21 @@ struct TransactionDetailView: View {
                 LabeledContent("Kurs je Einheit", value: Display.money(transaction.priceTransactionEur))
                 LabeledContent("Herkunft", value: transaction.priceSource == "manual" ? "Manuell" : transaction.priceProvider ?? "Automatisch / unbekannt")
                 Hint(text: "Unverbindliche Schätzung. Manuelle Kurskorrekturen werden im Web-Tool gepflegt.")
+                Button {
+                    if priceJobID != nil { pricePollRevision += 1 }
+                    else { Task { await requestPrice() } }
+                } label: {
+                    HStack {
+                        Label(priceJobID == nil ? "Jetzt Kursdaten abrufen" : "Status aktualisieren", systemImage: "arrow.clockwise")
+                        if requestingPrice || pollingPrice { Spacer(); ProgressView() }
+                    }
+                }.disabled(store.isDemo || transaction.priceFetchUnavailableReason != nil || requestingPrice || pollingPrice)
+                    .accessibilityIdentifier("fetchTransactionPrice")
+                if store.isDemo { Hint(text: "Kursabrufe benötigen einen verbundenen Server. Die Demo enthält feste Beispielwerte.") }
+                else if let reason = transaction.priceFetchUnavailableReason { Hint(text: reason) }
+                else { Hint(text: "Prüft den historischen EUR-Kurs zum Buchungsdatum erneut. Der Auftrag läuft auf deinem Server weiter, auch wenn du diese Seite verlässt.") }
+                if let priceStatus { Text(priceStatus).font(.footnote).foregroundStyle(.secondary) }
+                if let priceError { Text(priceError).font(.footnote).foregroundStyle(.red) }
             }
             Section("Referenzen") {
                 if let hash = transaction.hash, !hash.isEmpty { selectable("Transaktionsreferenz", hash) }
@@ -161,6 +184,9 @@ struct TransactionDetailView: View {
         }
         .navigationTitle("Buchung #\(transaction.id)").navigationBarTitleDisplayMode(.inline)
         .task { purpose = transaction.purpose ?? ""; await load() }
+        .task(id: "\(priceJobID ?? 0)-\(scenePhase == .active)-\(pricePollRevision)") {
+            if scenePhase == .active, let id = priceJobID { await pollPrice(id: id) }
+        }
     }
     private var purposes: [String] {
         Array(Set((store.metadata?.purposePresets ?? []) + [transaction.purpose].compactMap { $0 }.filter { !$0.isEmpty })).sorted()
@@ -173,6 +199,11 @@ struct TransactionDetailView: View {
         guard let client = store.client else { return }
         error = nil
         do {
+            let fresh: Detail<Transaction> = try await client.get("/api/v1/transactions/\(transaction.id)")
+            try Task.checkCancellation()
+            let previousPurpose = transaction.purpose ?? ""
+            transaction = fresh.data
+            if purpose == previousPurpose { purpose = transaction.purpose ?? "" }
             let source: Detail<Wallet> = try await client.get("/api/v1/wallets/\(transaction.walletId)")
             wallet = source.data
             documents = try await client.all("/api/v1/documents", query: [.init(name: "transaction_id", value: String(transaction.id))])
@@ -180,6 +211,60 @@ struct TransactionDetailView: View {
             loaded = true
         } catch is CancellationError { }
         catch { self.error = error.localizedDescription }
+    }
+    private func requestPrice() async {
+        guard let client = store.client, !requestingPrice, !store.isDemo else { return }
+        let session = store.sessionID
+        requestingPrice = true; priceError = nil
+        defer { requestingPrice = false }
+        do {
+            let receipt = try await client.requestHistoricalPrice(transactionID: transaction.id)
+            guard store.sessionID == session else { return }
+            priceStatus = "Kursabruf #\(receipt.job.id) wurde \(receipt.reused ? "bereits eingeplant" : "eingeplant")."
+            priceJobID = receipt.job.id
+        } catch is CancellationError { }
+        catch { if store.sessionID == session { priceError = error.localizedDescription } }
+    }
+
+    private func pollPrice(id: Int) async {
+        guard let client = store.client else { return }
+        let token = UUID()
+        let session = store.sessionID
+        pricePollToken = token
+        pollingPrice = true; priceError = nil
+        defer { if pricePollToken == token { pollingPrice = false } }
+        do {
+            for _ in 0..<90 {
+                let job = try await client.historicalPriceJob(id: id)
+                try Task.checkCancellation()
+                guard store.sessionID == session, pricePollToken == token else { return }
+                if job.status == "error" {
+                    priceError = job.errorMessage ?? "Kursabruf fehlgeschlagen. Bitte erneut versuchen."
+                    priceJobID = nil
+                    return
+                }
+                if job.status == "success" {
+                    guard let result = job.result, result.transactionId == transaction.id else { throw APIError.invalidData }
+                    let fresh: Detail<Transaction> = try await client.get("/api/v1/transactions/\(transaction.id)")
+                    let history: [PriceAudit] = try await client.all("/api/v1/price-audit", query: [.init(name: "transaction_id", value: String(transaction.id))])
+                    try Task.checkCancellation()
+                    guard store.sessionID == session, pricePollToken == token else { return }
+                    let previousPurpose = transaction.purpose ?? ""
+                    transaction = fresh.data
+                    if purpose == previousPurpose { purpose = transaction.purpose ?? "" }
+                    audit = history
+                    priceStatus = result.hint ?? (result.updated > 0 ? "Historischer EUR-Kurs aktualisiert." : "Kein Kurs geändert.")
+                    store.dataRevision += 1
+                    priceJobID = nil
+                    return
+                }
+                guard job.isActive else { throw APIError.invalidData }
+                priceStatus = "Kursabruf #\(id): \(job.status == "queued" ? "wartet auf einen freien Platz" : "wird ausgeführt") …"
+                try await Task.sleep(for: .seconds(2))
+            }
+            priceStatus = "Der Auftrag läuft auf dem Server weiter. Du kannst den Status erneut aktualisieren oder unter Mehr → Hintergrundjobs prüfen."
+        } catch is CancellationError { }
+        catch { if store.sessionID == session, pricePollToken == token { priceError = error.localizedDescription } }
     }
     private func savePurpose() async {
         if store.isDemo {

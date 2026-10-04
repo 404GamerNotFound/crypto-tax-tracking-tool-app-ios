@@ -6,7 +6,7 @@ struct PrivacyView: View {
         List {
             Section("Datenverarbeitung") {
                 Text("CryptoBuch zeigt Daten deines selbst betriebenen Servers an. Mit Speichern & verbinden oder durch Auswahl eines gespeicherten Servers lädt die App dein Portfolio, öffentliche Wallet-Adressen, Buchungen und Auswertungen. Bei späteren App-Starts verbindet sie sich automatisch mit dem zuletzt erfolgreich verwendeten Server. Ohne gespeicherten Startserver erfolgt keine automatische Verbindung.")
-                Text("Änderst du einen Buchungszweck, startest du eine Synchronisierung oder markierst du einen Hinweis als gelesen, übermittelt die App den jeweiligen Auftrag an diesen Server. Der Server kann dabei auch deine Netzwerkadresse sehen.")
+                Text("Änderst du einen Buchungszweck, startest du einen Kursabruf oder eine Synchronisierung oder markierst du einen Hinweis als gelesen, übermittelt die App den jeweiligen Auftrag an diesen Server. Der Server kann dabei auch deine Netzwerkadresse sehen.")
             }
             Section("Speicherung auf dem Gerät") {
                 Text("Gespeichert werden deine Serveradressen mit Protokoll und Port sowie die Auswahl des zuletzt erfolgreich verwendeten Servers. Diese Einstellungen können Teil deiner iOS-Gerätesicherung sein. Portfolio- und Buchungsdaten hält die App nur im Arbeitsspeicher; sie verwendet keinen dauerhaften Netzwerkcache und keine gespeicherten Cookies.")
@@ -59,7 +59,7 @@ struct SupportView: View {
                 Text("Ziehe eine Übersicht nach unten, um sie neu zu laden. Fehlende Kurse werden als fehlend angezeigt; ein nicht erreichbarer Server wird niemals unbemerkt durch Demodaten ersetzt.")
             }
             Section("Was die App kann") {
-                Text("Portfolio und Buchungen prüfen, Zwecke zuordnen, Synchronisierungen einplanen, Hinweise lesen und vorhandene Steuer-Schätzungen anzeigen. Wallet-Einrichtung, Imports, Ledger, Belegdateien, Kurskorrekturen und Steuerprofile werden im CryptoBuch-Servertool verwaltet.")
+                Text("Portfolio und Buchungen prüfen, Zwecke zuordnen, historische EUR-Kurse gezielt abrufen, Synchronisierungen einplanen, Hinweise lesen und vorhandene Steuer-Schätzungen anzeigen. Wallet-Einrichtung, Imports, Ledger, Belegdateien, Kurskorrekturen und Steuerprofile werden im CryptoBuch-Servertool verwaltet.")
                 Text("Die App ist ein Buchungsjournal und eine Organisationshilfe. Historische Bewertungen und Steuerergebnisse sind unverbindliche Schätzungen, keine Anlage- oder Steuerberatung.")
             }
             if publication.supportLink != nil || publication.emailLink != nil {
