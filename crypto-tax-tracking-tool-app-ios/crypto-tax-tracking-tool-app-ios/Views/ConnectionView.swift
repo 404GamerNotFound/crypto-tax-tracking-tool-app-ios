@@ -5,6 +5,8 @@ struct ConnectionView: View {
     @State private var host = ""
     @State private var port = "3000"
     @State private var secure = false
+    @State private var password = ""
+    @State private var rememberPassword = false
     @FocusState private var focused: Bool
     var body: some View {
         ScrollView {
@@ -29,6 +31,25 @@ struct ConnectionView: View {
                 }
                 if let error = store.connectionError {
                     Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red)
+                }
+                if let address = store.authenticationAddress {
+                    Card {
+                        Label("Server entsperren", systemImage: "lock.fill").font(.headline)
+                        Text(address).font(.caption).foregroundStyle(.secondary)
+                        SecureField("CryptoBuch-Passwort", text: $password).textContentType(.password)
+                            .padding(14).background(Theme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                        Toggle("Passwort mit Face ID / Touch ID speichern", isOn: $rememberPassword)
+                        Hint(text: "Das Passwort wird nur auf diesem Gerät im Schlüsselbund gespeichert. Face ID / Touch ID gibt es für die Anmeldung bei diesem Server frei. Alternativ kannst du es jedes Mal eingeben.")
+                        Button("Mit Passwort anmelden") {
+                            let value = password; password = ""
+                            Task { await store.connect(address, password: value, rememberPassword: rememberPassword, useBiometrics: false) }
+                        }.buttonStyle(.borderedProminent).disabled(password.isEmpty || store.connecting)
+                        if store.hasSavedPassword(for: address) {
+                            Button { Task { await store.connect(address) } } label: { Label("Mit Face ID / Touch ID anmelden", systemImage: "faceid") }
+                                .disabled(store.connecting)
+                            Button("Gespeichertes Passwort entfernen", role: .destructive) { store.forgetPassword(for: address); rememberPassword = false }
+                        }
+                    }
                 }
                 if !store.savedServers.isEmpty { savedServers }
                 Card {
@@ -76,9 +97,10 @@ struct ConnectionView: View {
                     NavigationLink("Hilfe & Support") { SupportView() }
                 }.font(.subheadline).padding(.vertical, 8)
                 if !store.savedServers.isEmpty { ForgetConnectionButton() }
-                Hint(text: "Der Server besitzt keine eigene Anmeldung. Nutze im Internet einen geschützten HTTPS-Zugang. Die App unterstützt derzeit keine Anmeldung an einem vorgeschalteten Proxy.")
+                Hint(text: "Passwortschutz aktivierst du im Web unter Einstellungen → Passwortschutz. Für Internetzugriffe HTTPS verwenden. Eine separate Proxy-Anmeldung wird nicht unterstützt.")
             }.padding(24).frame(maxWidth: 570).frame(maxWidth: .infinity)
         }.background(Theme.canvas).scrollDismissesKeyboard(.interactively)
+        .onChange(of: store.authenticationAddress) { _, _ in password = ""; rememberPassword = false }
         .onChange(of: store.savedServers.isEmpty) { _, empty in
             if empty { host = ""; port = "3000"; secure = false }
         }
@@ -107,6 +129,12 @@ struct ConnectionView: View {
                     }.buttonStyle(.plain).disabled(store.connecting)
                         .accessibilityLabel("Mit \(server.address) verbinden")
                         .accessibilityValue(server.address == store.serverText ? "Startserver" : "")
+                    if store.hasSavedPassword(for: server.address) {
+                        Menu {
+                            Button("Gespeichertes Passwort entfernen", role: .destructive) { store.forgetPassword(for: server.address) }
+                        } label: { Image(systemName: "key.fill").frame(minWidth: 44, minHeight: 44) }
+                            .accessibilityLabel("Gespeichertes Passwort für \(server.address) verwalten")
+                    }
                     Button(role: .destructive) { store.removeServer(server) } label: {
                         Image(systemName: "trash").frame(minWidth: 44, minHeight: 44)
                     }.buttonStyle(.plain).foregroundStyle(.red)
@@ -114,7 +142,7 @@ struct ConnectionView: View {
                 }
                 if server.id != store.savedServers.last?.id { Divider() }
             }
-            Hint(text: "Tippe auf einen Server, um ihn zu öffnen. Deine Auswahl wird nach erfolgreicher Verbindung zum Startserver. Entfernen löscht nur den Listeneintrag auf diesem Gerät.")
+            Hint(text: "Tippe auf einen Server, um ihn zu öffnen. Deine Auswahl wird nach erfolgreicher Verbindung zum Startserver. Entfernen löscht den Listeneintrag und ein dazu gespeichertes Passwort auf diesem Gerät.")
         }
     }
     private func connect() {

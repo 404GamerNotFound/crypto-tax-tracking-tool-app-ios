@@ -235,6 +235,72 @@ final class APIClientTests: XCTestCase {
         await client.close()
     }
 
+    func testAssetVisibilityUsesExactIdentityAndBoolean() async throws {
+        let client = try makeClient { request in
+            XCTAssertEqual(request.httpMethod, "PATCH")
+            XCTAssertEqual(request.url?.path, "/api/asset-visibility")
+            let body = try Self.jsonBody(request)
+            XCTAssertEqual(body["asset"] as? String, "ETH:0x123")
+            XCTAssertEqual(body["hidden"] as? Bool, true)
+            return (200, #"{"hiddenAssets":["ETH:0x123"],"scope":"portfolio"}"#)
+        }
+        let result = try await client.setAssetVisibility(asset: "ETH:0x123", hidden: true)
+        XCTAssertEqual(result.hiddenAssets, ["ETH:0x123"])
+        await client.close()
+    }
+
+    func testPortfolioVisibilityIsCompatibleWithOlderServersAndRetainsHiddenHoldings() throws {
+        let json = #"{"holdings":{"BTC":1,"ETH:0x123":1000000000},"assets":{"BTC":{"name":"Bitcoin","symbol":"BTC"},"ETH:0x123":{"name":"Token","symbol":"BTC"}},"assetPrices":{"BTC":100,"ETH:0x123":3},"totalValueEur":100,"insights":{"valueHistory":[],"performance":{}},"hiddenAssets":["ETH:0x123"]}"#
+        let portfolio = try APIClient.decoder().decode(Portfolio.self, from: Data(json.utf8))
+        XCTAssertEqual(portfolio.positions.map(\.id), ["BTC"])
+        XCTAssertEqual(portfolio.holdings["ETH:0x123"], 1000000000)
+        let old = json.replacingOccurrences(of: #","hiddenAssets":["ETH:0x123"]"#, with: "")
+        let legacy = try APIClient.decoder().decode(Portfolio.self, from: Data(old.utf8))
+        XCTAssertEqual(legacy.positions.count, 2)
+    }
+
+    func testLoginTokenIsSentToSameServerAndLogoutClearsIt() async throws {
+        let token = String(repeating: "a", count: 64)
+        let client = try makeClient { request in
+            XCTAssertEqual(request.url?.path, "/api/auth/login")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-CryptoBuch-Request"), "1")
+            XCTAssertEqual(try Self.jsonBody(request)["password"] as? String, "test-only-password")
+            return (200, "{\"authenticated\":true,\"token\":\"\(token)\"}")
+        }
+        try await client.login(password: "test-only-password")
+        StubProtocol.handler = { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer " + token)
+            return (200, "{\"id\":1}")
+        }
+        let _: TestItem = try await client.get("/api/v1/wallets/1")
+        await client.logout()
+        StubProtocol.handler = { request in
+            XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+            return (200, "{\"id\":1}")
+        }
+        let _: TestItem = try await client.get("/api/v1/wallets/1")
+        await client.close()
+    }
+
+    func testExpiredSessionNotifiesAndInvalidatesToken() async throws {
+        let client = try makeClient { _ in (200, "{\"authenticated\":true,\"token\":\"\(String(repeating: "b", count: 64))\"}") }
+        try await client.login(password: "test-only-password")
+        let expired = expectation(description: "Session expiry delivered")
+        await client.setSessionExpiredHandler { expired.fulfill() }
+        StubProtocol.handler = { _ in (401, #"{"error":"Anmeldung erforderlich"}"#) }
+        do { let _: TestItem = try await client.get("/api/v1/wallets/1"); XCTFail("Expected 401") }
+        catch { XCTAssertEqual(error as? APIError, .server(401, "Anmeldung erforderlich")) }
+        await fulfillment(of: [expired], timeout: 2)
+        StubProtocol.handler = { request in
+            XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+            return (200, "{\"id\":1}")
+        }
+        let _: TestItem = try await client.get("/api/v1/wallets/1")
+        await client.close()
+    }
+
     private static func jsonBody(_ request: URLRequest) throws -> [String: Any] {
         var data = request.httpBody ?? Data()
         if data.isEmpty, let stream = request.httpBodyStream {

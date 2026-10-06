@@ -91,3 +91,15 @@ POST/PATCH verwenden das bestehende Schreibformat (camelCase; `tags` in der Antw
 Die native App verwendet eine eigene CryptoBuch-Bildmarke und eine passende Journal-Illustration. Das neue `CryptoBuchIcon` ist als iOS-App-Icon konfiguriert. Logo und Illustration sind lokale Asset-Kataloge; sie erscheinen in der Verbindungseinrichtung, im Überblick, bei leeren Wallet-/Portfolio-Ansichten, in der Hilfe und auf der Sichtschutzansicht im Hintergrund. Es werden keine Bilder aus dem Netz nachgeladen. Texte bleiben native, skalierbare SwiftUI-Elemente; dekorative Bilder sind für VoiceOver ausgeblendet.
 
 Originale, Gestaltung und die verwendeten Imagegen-Prompts sind unter [Docs/Branding](Docs/Branding/README.md) dokumentiert. Das frühere App-Icon bleibt als unbenutztes `AppIcon`-Set erhalten.
+
+### Coins ausblenden
+
+Unter **Überblick → Deine Bestände → Ausblenden** lassen sich Coins serverweit aus der Portfolio-Bewertung herausnehmen. **Ausgeblendete Coins → Wieder einblenden** stellt sie wieder her. Die App verwendet `PATCH /api/asset-visibility` mit exakter Asset-ID und übernimmt `hiddenAssets` aus `/api/portfolio`; gleichnamige Token bleiben getrennt. Die Einstellung gilt auch im Web. Buchungen, Datenqualität und Steuerberichte bleiben vollständig. Im Demomodus sind die Schreibaktionen deaktiviert. Ältere Server ohne `hiddenAssets` bleiben lesbar; für Änderungen ist ein aktualisiertes Backend erforderlich.
+
+### Server-Passwort und Face ID
+
+Passwortschutz im Web unter **Einstellungen → Passwortschutz** aktivieren. Beim Verbinden fragt die App anschließend nach diesem Passwort. **Passwort mit Face ID / Touch ID speichern** ist freiwillig und zunächst ausgeschaltet. Das Passwort bleibt gerätegebunden im Schlüsselbund; biometrische Freigabe dient ausschließlich der normalen Server-Anmeldung. Sitzungs-Token werden nicht dauerhaft gespeichert. Beim nächsten Start oder nach einem Wechsel in den Hintergrund wird erneut entsperrt. Manuelle Passworteingabe bleibt bei Abbruch, geänderter Biometrie oder fehlendem Schlüsselbundeintrag möglich. Nach Passwortänderungen am Server das neue Passwort erneut eingeben und bei Bedarf speichern. Über das Schlüssel-Menü in der Serverliste lässt sich die Ablage separat entfernen.
+
+Die App unterstützt weiterhin Server ohne Passwort und den serverlosen Demomodus. Geschützte Server benötigen die neuen `/api/auth/*`-Endpunkte. HTTPS schützt Passwort und Sitzungsdaten auf dem Transportweg; HTTP ist nur für vertrauenswürdige lokale Netze vorgesehen. Face ID muss zusätzlich auf einem echten Gerät geprüft werden.
+
+Technische Grundlage: [Apples Schlüsselbund-Zugriff mit Face ID / Touch ID](https://developer.apple.com/documentation/localauthentication/accessing-keychain-items-with-face-id-or-touch-id).

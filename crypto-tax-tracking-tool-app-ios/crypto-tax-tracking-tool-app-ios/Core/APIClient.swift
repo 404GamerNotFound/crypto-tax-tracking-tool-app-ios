@@ -103,6 +103,8 @@ final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sen
 actor APIClient {
     nonisolated let address: ServerAddress
     private let session: URLSession
+    private var sessionToken: String?
+    private var onSessionExpired: (@Sendable () -> Void)?
 
     init(address: ServerAddress, session: URLSession? = nil) {
         self.address = address
@@ -125,7 +127,23 @@ actor APIClient {
         return decoder
     }
 
-    func close() { session.invalidateAndCancel() }
+    func close() { sessionToken = nil; session.invalidateAndCancel() }
+    func setSessionExpiredHandler(_ handler: @escaping @Sendable () -> Void) { onSessionExpired = handler }
+    private struct LoginBody: Encodable, Sendable { let password: String }
+    private struct LoginResponse: Decodable, Sendable { let token: String; let authenticated: Bool }
+    func login(password: String) async throws {
+        sessionToken = nil
+        let response: LoginResponse = try await send("/api/auth/login", body: LoginBody(password: password))
+        guard response.authenticated, response.token.count == 64,
+              response.token.allSatisfy({ $0.isASCII && $0.isHexDigit }) else { throw APIError.invalidData }
+        sessionToken = response.token
+    }
+    func logout() async {
+        if sessionToken != nil { let _: Acknowledgement? = try? await send("/api/auth/logout", body: EmptyLoginBody()) }
+        sessionToken = nil
+    }
+    private struct EmptyLoginBody: Encodable, Sendable {}
+
 
     func requestHistoricalPrice(transactionID: Int) async throws -> PriceFetchReceipt {
         struct EmptyBody: Encodable, Sendable {}
@@ -138,6 +156,14 @@ actor APIClient {
         let job: PriceFetchJob = try await get("/api/jobs/\(id)")
         guard job.id == id else { throw APIError.invalidData }
         return job
+    }
+
+    struct AssetVisibility: Decodable, Sendable { let hiddenAssets: [String]; let scope: String }
+    private struct AssetVisibilityUpdate: Encodable, Sendable { let asset: String; let hidden: Bool }
+
+    func setAssetVisibility(asset: String, hidden: Bool) async throws -> AssetVisibility {
+        guard !asset.isEmpty, asset.count <= 200 else { throw APIError.invalidData }
+        return try await send("/api/asset-visibility", method: "PATCH", body: AssetVisibilityUpdate(asset: asset, hidden: hidden))
     }
 
     func createWallet(_ body: WalletCreation) async throws -> Int {
@@ -175,6 +201,8 @@ actor APIClient {
                                                method: String, body: Data? = nil) async throws -> T {
         var request = URLRequest(url: try address.resolve(path, query: query))
         request.httpMethod = method
+        request.setValue("1", forHTTPHeaderField: "X-CryptoBuch-Request")
+        if let sessionToken { request.setValue("Bearer " + sessionToken, forHTTPHeaderField: "Authorization") }
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
@@ -200,6 +228,7 @@ actor APIClient {
         try Task.checkCancellation()
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
+            if http.statusCode == 401, sessionToken != nil { sessionToken = nil; onSessionExpired?() }
             let message = (try? JSONDecoder().decode(ErrorBody.self, from: data).error)
                 ?? "Serveranfrage fehlgeschlagen. Bitte Adresse und Zugriff prüfen."
             throw APIError.server(http.statusCode, String(message.prefix(500)))

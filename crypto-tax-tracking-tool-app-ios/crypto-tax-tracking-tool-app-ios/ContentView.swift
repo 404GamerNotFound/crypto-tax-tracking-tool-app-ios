@@ -40,6 +40,10 @@ struct ContentView: View {
         }
         .environmentObject(store)
         .task { await store.restoreConnectionIfNeeded() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { store.lockForBackground() }
+            if phase == .active { Task { await store.resumeLockedConnection() } }
+        }
         .tint(Theme.green)
         .environment(\.locale, Locale(identifier: "de_DE"))
         .alert("CryptoBuch", isPresented: Binding(get: { store.banner != nil }, set: { if !$0 { store.banner = nil } })) {

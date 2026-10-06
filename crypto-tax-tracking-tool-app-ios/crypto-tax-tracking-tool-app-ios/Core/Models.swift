@@ -89,6 +89,7 @@ struct PriceFetchJob: Decodable, Sendable {
 
 struct Portfolio: Decodable, Sendable {
     let holdings: [String: Decimal]
+    let hiddenAssets: [String]?
     let assets: [String: Asset]
     let assetPrices: [String: Decimal?]
     let totalValueEur: Decimal
@@ -118,7 +119,7 @@ struct Portfolio: Decodable, Sendable {
         var value: Decimal? { price.map { $0 * amount } }
     }
     var positions: [Holding] {
-        holdings.filter { $0.value != 0 }.map { key, amount in
+        holdings.filter { $0.value != 0 && !(hiddenAssets ?? []).contains($0.key) }.map { key, amount in
             Holding(id: key, name: assets[key]?.name ?? key, symbol: assets[key]?.symbol ?? key,
                     amount: amount, price: assetPrices[key] ?? nil)
         }.sorted { ($0.value ?? 0) > ($1.value ?? 0) }

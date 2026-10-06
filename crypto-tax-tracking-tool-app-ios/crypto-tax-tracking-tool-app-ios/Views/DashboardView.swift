@@ -9,6 +9,8 @@ struct DashboardView: View {
     @State private var qualityError: String?
     @State private var updatedAt: Date?
     @State private var loading = false
+    @State private var changingVisibility = false
+    @State private var visibilityError: String?
 
     var body: some View {
         ScrollView {
@@ -17,6 +19,9 @@ struct DashboardView: View {
                 if store.isDemo { Hint(text: "Beispielbewertung eines festen Szenarios. Zweckänderungen im Demo-Journal verändern diese Bewertungsbeispiele nicht.") }
                 if let portfolio {
                     balanceCard(portfolio)
+                    if !(portfolio.hiddenAssets ?? []).isEmpty {
+                        Hint(text: "\(portfolio.hiddenAssets?.count ?? 0) Coin(s) ausgeblendet. Portfolio-Wert und Wertentwicklung schließen diese aus. Buchungen und Steuerberichte bleiben vollständig.", icon: "eye.slash")
+                    }
                     if let error { Label(error, systemImage: "wifi.exclamationmark").font(.footnote).foregroundStyle(.red) }
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .top, spacing: 20) { performanceCard(portfolio); qualityCard }
@@ -39,7 +44,7 @@ struct DashboardView: View {
                     }
                     Card {
                         HStack { Text("Deine Bestände").font(.headline); Spacer(); Text("\(portfolio.positions.count) Assets").font(.caption).foregroundStyle(.secondary) }
-                        if portfolio.positions.isEmpty {
+                        if portfolio.positions.isEmpty && (portfolio.hiddenAssets ?? []).isEmpty {
                             BrandEmptyState(title: "Dein Portfolio beginnt hier", message: "Füge unter Quellen eine öffentliche Wallet hinzu und starte ihre Synchronisierung. Börsenkonten richtest du im Web-Tool ein.")
                         }
                         ForEach(Array(portfolio.positions.enumerated()), id: \.element.id) { index, holding in
@@ -48,10 +53,19 @@ struct DashboardView: View {
                                     AssetBadge(symbol: holding.symbol)
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(holding.name).font(.subheadline.weight(.semibold))
+                                        if holding.id.contains(":") { Text(holding.id).font(.caption2).foregroundStyle(.secondary) }
                                         Text(Display.number(holding.amount) + " " + holding.symbol).font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
                                     Text(holding.value.map { Display.money($0) } ?? "Kurs fehlt").font(.subheadline.weight(.semibold)).monospacedDigit()
+                                }
+                                HStack {
+                                    Spacer()
+                                    Button { Task { await setVisibility(asset: holding.id, hidden: true) } } label: {
+                                        Label("Ausblenden", systemImage: "eye.slash")
+                                    }.font(.caption).buttonStyle(.bordered)
+                                        .accessibilityLabel("\(holding.name) ausblenden")
+                                        .disabled(store.isDemo || changingVisibility || loading)
                                 }
                                 if let value = holding.value, value > 0, portfolio.totalValueEur > 0 {
                                     ProgressView(value: min(1, Display.double(value / portfolio.totalValueEur)))
@@ -61,6 +75,23 @@ struct DashboardView: View {
                             if index < portfolio.positions.count - 1 { Divider() }
                         }
                         Hint(text: "Aktuelle Kurse und Salden stammen vom Server. Kurse können verzögert sein; Buchungsdaten können vom tatsächlichen Börsensaldo abweichen.")
+                    }
+                    Card {
+                        DisclosureGroup("Ausgeblendete Coins (\(portfolio.hiddenAssets?.count ?? 0))") {
+                            VStack(alignment: .leading, spacing: 16) {
+                                if (portfolio.hiddenAssets ?? []).isEmpty { Text("Keine Coins ausgeblendet.").foregroundStyle(.secondary) }
+                                ForEach(portfolio.hiddenAssets ?? [], id: \.self) { id in
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(portfolio.assets[id]?.name ?? id).font(.subheadline.weight(.semibold))
+                                        Text(id).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                                        Button { Task { await setVisibility(asset: id, hidden: false) } } label: {
+                                            Label("Wieder einblenden", systemImage: "eye")
+                                        }.buttonStyle(.bordered).disabled(store.isDemo || changingVisibility || loading)
+                                    }
+                                }
+                            }.padding(.top, 12)
+                        }
+                        Hint(text: "Ausblenden gilt für das Portfolio in Web und App. Buchungen, Datenqualität und Steuerberichte bleiben erhalten. Du kannst jeden Coin wieder einblenden.")
                     }
                     if let updatedAt {
                         Text("Abgerufen um " + updatedAt.formatted(.dateTime.hour().minute()))
@@ -75,6 +106,9 @@ struct DashboardView: View {
             ToolbarItem(placement: .topBarLeading) { BrandLogo(size: 30) }
             ToolbarItem(placement: .topBarTrailing) { Label(store.serverName, systemImage: store.isDemo ? "sparkles" : "externaldrive.connected.to.line.below").font(.caption).foregroundStyle(.secondary) }
         }
+        .alert("Coin-Auswahl konnte nicht gespeichert werden", isPresented: Binding(get: { visibilityError != nil }, set: { if !$0 { visibilityError = nil } })) {
+            Button("OK", role: .cancel) { visibilityError = nil }
+        } message: { Text(visibilityError ?? "") }
         .task(id: store.dataRevision) { await load() }.refreshable { await load() }
     }
 
@@ -112,6 +146,20 @@ struct DashboardView: View {
             else { ProgressView() }
         }
     }
+    private func setVisibility(asset: String, hidden: Bool) async {
+        guard !store.isDemo, !changingVisibility, let client = store.client else { return }
+        let session = store.sessionID
+        changingVisibility = true
+        defer { changingVisibility = false }
+        do {
+            _ = try await client.setAssetVisibility(asset: asset, hidden: hidden)
+            guard session == store.sessionID else { return }
+            await load()
+            store.dataRevision += 1
+        } catch is CancellationError { }
+        catch { if session == store.sessionID { visibilityError = error.localizedDescription } }
+    }
+
     private func load() async {
         guard !loading else { return }
         loading = true
